@@ -1,0 +1,45 @@
+{
+    "name": "robertogriel/replicator",
+    "description": "",
+    "homepage": "https://github.com/robertogriel/replicator",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Roberto Griel Filho",
+            "email": "roberto@griel.com.br"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/console": "^11.29",
+        "illuminate/contracts": "^10.0||^11.0",
+        "illuminate/support": "^11.29",
+        "spatie/laravel-package-tools": "^1.16"
+    },
+    "autoload": {
+        "psr-4": {
+            "robertogriel\\Replicator\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Workbench\\App\\": "workbench/app/"
+        }
+    },
+
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "robertogriel\\Replicator\\ReplicatorServiceProvider"
+            ],
+            "aliases": {
+                "Skeleton": "robertogriel\\mysql-replicator\\Facades\\Skeleton"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
