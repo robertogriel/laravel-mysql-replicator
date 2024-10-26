@@ -18,23 +18,29 @@ class ReplicatorManager
     protected string $cacheKey = '';
     protected $callback;
     protected int $slaveId;
+    protected string $host;
+    protected string $user;
+    protected string $password;
 
-    public function __construct(array $databases, array $tables, int $slaveId, callable $callback)
+    public function __construct(array $databases, string $host, string $user, string $password, array $tables, int $slaveId, callable $callback)
     {
         $this->databases = $databases;
         $this->tables = $tables;
         $this->callback = $callback;
         $this->cacheKey = str_replace(',', '_', implode(',', $tables));
         $this->slaveId = $slaveId;
+        $this->host = $host;
+        $this->user = $user;
+        $this->password = $password;
     }
 
     public function runReplication(): void
     {
         $builder = (new ConfigBuilder())
             ->withPort(3306)
-            ->withHost(env('MYSQL_HOST'))
-            ->withUser(env('REPLICADOR_DB_USERNAME'))
-            ->withPassword(env('REPLICADOR_DB_PASSWORD'))
+            ->withHost($this->host)
+            ->withUser($this->user)
+            ->withPassword($this->password)
             ->withEventsOnly([ConstEventType::UPDATE_ROWS_EVENT_V1])
             ->withDatabasesOnly($this->databases)
             ->withTablesOnly($this->tables)
