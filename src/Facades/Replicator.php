@@ -5,7 +5,8 @@ namespace robertogriel\Replicator\Facades;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \robertogriel\Replicator\Replicator
+ * @method static void startReplication()
+ * @see \robertogriel\Replicator\Replicator::class
  */
 class Replicator extends Facade
 {
