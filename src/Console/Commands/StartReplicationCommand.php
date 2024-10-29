@@ -19,12 +19,12 @@ class StartReplicationCommand extends Command
 
     public function handle()
     {
-        $configuracoes = config('replicator');
+        $configurations = config('replicator');
 
         $databases = [];
         $tables = [];
 
-        foreach ($configuracoes as $config) {
+        foreach ($configurations as $config) {
             $databases[] = $config['database'];
             $tables[] = $config['table'];
         }
@@ -33,19 +33,29 @@ class StartReplicationCommand extends Command
         $tables = array_unique($tables);
 
         $registro = new class extends EventSubscribers {
-            public function allEvents(EventDTO $evento): void
+            public function allEvents(EventDTO $event): void
             {
                 $rawQuery = ArrayCache::getRawQuery();
                 echo $rawQuery . PHP_EOL;
+
+                echo "Evento: " . $event->getType() . PHP_EOL;
+
+                /*
+                 * $event->getType() returns:
+                 * - update
+                 * - write
+                 * - delete
+
+                */
             }
         };
 
         $builder = (new ConfigBuilder())
             ->withHost(env('DB_HOST'))
-            ->withPort(3306)
+            ->withPort(env('DB_PORT'))
             ->withUser(env('REPLICADOR_DB_USERNAME'))
             ->withPassword(env('REPLICADOR_DB_PASSWORD'))
-            ->withEventsOnly([ConstEventType::UPDATE_ROWS_EVENT_V1])
+            ->withEventsOnly([ConstEventType::UPDATE_ROWS_EVENT_V1, ConstEventType::WRITE_ROWS_EVENT_V1, ConstEventType::DELETE_ROWS_EVENT_V1])
             ->withDatabasesOnly($databases)
             ->withTablesOnly($tables);
 
