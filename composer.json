@@ -34,10 +34,7 @@
         "laravel": {
             "providers": [
                 "robertogriel\\Replicator\\ReplicatorServiceProvider"
-            ],
-            "aliases": {
-                "Replicator": "robertogriel\\Replicator\\Facades\\Replicator"
-            }
+            ]
         }
     },
     "minimum-stability": "dev",

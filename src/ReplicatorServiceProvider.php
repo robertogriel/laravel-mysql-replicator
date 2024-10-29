@@ -9,22 +9,22 @@ class ReplicatorServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        $this->app->singleton('Replicator', function ($app) {
-            return new Replicator();
-        });
+
+        $this->commands([
+            StartReplicationCommand::class,
+        ]);
+
+        $this->mergeConfigFrom(
+            __DIR__ . '/../config/Replicator.php',
+            'replicator'
+        );
     }
 
     public function boot()
     {
-        $this->publishes(
-            [
-                __DIR__ . '/../config/replicator.php' => config_path('replicator.php'),
-            ],
-            'config'
-        );
+        $this->publishes([
+            __DIR__ . '/../config/Replicator.php' => config_path('replicator.php'),
+        ], 'config');
 
-        if ($this->app->runningInConsole()) {
-            $this->commands([StartReplicationCommand::class]);
-        }
     }
 }
