@@ -14,7 +14,7 @@
         "illuminate/console": "^11.29",
         "illuminate/contracts": "^10.0||^11.0",
         "illuminate/support": "^11.29",
-        "robertogriel/php-mysql-replication": "0.4.2"
+        "robertogriel/php-mysql-replication": "0.5.0"
     },
     "autoload": {
         "psr-4": {
