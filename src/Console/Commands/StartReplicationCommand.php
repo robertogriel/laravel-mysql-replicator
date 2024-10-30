@@ -151,14 +151,20 @@ class StartReplicationCommand extends Command
                     foreach ($changedColumns as $column => $value) {
                         $binds[":{$column}"] = $value;
                     }
+                    $binds = array_combine(
+                        array_map(fn($column) => ":{$column}", array_keys($changedColumns)),
+                        array_values($changedColumns)
+                    );
                     $binds[":{$targetPrimaryKey}"] = $primaryKeyValue;
 
                     $replicateTag = Event::REPLICATION_QUERY;
+                    $clausule = implode(', ', array_map(function ($column) use ($targetDatabase, $targetTable) {
+                        return "{$targetDatabase}.{$targetTable}.{$column} = :{$column}";
+                    }, array_keys($changedColumns)));
 
-                    DB::update("UPDATE {$targetDatabase}.{$targetTable}
-                        SET " . implode(', ', array_map(function ($column) use ($targetDatabase, $targetTable) {
-                            return "{$targetDatabase}.{$targetTable}.{$column} = :{$column}";
-                        }, array_keys($changedColumns))) . "
+                    DB::update(
+                        "UPDATE {$targetDatabase}.{$targetTable}
+                        SET {$clausule}
                         WHERE {$targetDatabase}.{$targetTable}.{$targetPrimaryKey} = :{$targetPrimaryKey} {$replicateTag};",
                         $binds);
                 }
@@ -170,6 +176,21 @@ class StartReplicationCommand extends Command
                 array  $data
             ): void
             {
+
+                $replicateTag = Event::REPLICATION_QUERY;
+                $binds = array_map(function ($value) {
+                    return is_null($value) ? null : $value;
+                }, $data);
+
+                $columns = implode(',', array_keys($data));
+                $placeholders = implode(',', array_map(fn($column) => ":{$column}", array_keys($data)));
+
+                $sql = "INSERT INTO {$targetDatabase}.{$targetTable} ({$columns}) VALUES ({$placeholders}) {$replicateTag};";
+
+                DB::insert(
+                    $sql,
+                    $binds
+                );
                 if (!empty($data)) {
                     DB::statement('SET SESSION sql_log_bin=0;');
 
@@ -178,6 +199,7 @@ class StartReplicationCommand extends Command
 
                     DB::statement('SET SESSION sql_log_bin=1;');
                 }
+
             }
 
             private function handleDelete(string $targetDatabase, string $targetTable, string $targetPrimaryKey, array $data): void
