@@ -19,7 +19,7 @@ class StartReplicationCommand extends Command
 {
     protected $signature = 'replicator:start';
     protected $description = 'Inicia o processo de replicação configurado no pacote Replicator';
-    public const CACHE_ULTIMA_ALTERACAO = 'replicador.colaborador_loja.ultima_alteracao';
+    public const CACHE_LAST_CHANGES = 'replicador.colaborador_loja.ultima_alteracao';
 
     public function handle(): void
     {
@@ -38,7 +38,7 @@ class StartReplicationCommand extends Command
         $databases = array_unique($databases);
         $tables = array_unique($tables);
 
-        $registro = new class($configurations) extends EventSubscribers {
+        $registration = new class($configurations) extends EventSubscribers {
             private array $configurations;
 
             public function __construct(array $configurations)
@@ -228,15 +228,15 @@ class StartReplicationCommand extends Command
             ->withDatabasesOnly($databases)
             ->withTablesOnly($tables);
 
-        $ultimaAlteracao = Cache::get(self::CACHE_ULTIMA_ALTERACAO);
-        if (!empty($ultimaAlteracao)) {
-            $builder->withBinLogFileName($ultimaAlteracao['arquivo'])
-                ->withBinLogPosition($ultimaAlteracao['posicao']);
+        $lastBinlogChange = Cache::get(self::CACHE_LAST_CHANGES);
+        if (!empty($lastBinlogChange)) {
+            $builder->withBinLogFileName($lastBinlogChange['arquivo'])
+                ->withBinLogPosition($lastBinlogChange['posicao']);
         }
 
-        $replicacao = new MySQLReplicationFactory($builder->build());
-        $replicacao->registerSubscriber($registro);
+        $replication = new MySQLReplicationFactory($builder->build());
+        $replication->registerSubscriber($registration);
 
-        $replicacao->run();
+        $replication->run();
     }
 }
