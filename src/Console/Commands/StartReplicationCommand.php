@@ -2,6 +2,7 @@
 
 namespace robertogriel\Replicator\Console\Commands;
 
+use App\Helpers\ReplicatorHelper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -40,10 +41,12 @@ class StartReplicationCommand extends Command
 
         $registration = new class($configurations) extends EventSubscribers {
             private array $configurations;
+            private ReplicatorHelper $helper;
 
             public function __construct(array $configurations)
             {
                 $this->configurations = $configurations;
+                $this->helper = new ReplicatorHelper();
             }
 
             public function allEvents(EventDTO $event): void
@@ -80,18 +83,30 @@ class StartReplicationCommand extends Command
                             $columnMappings = array_flip($config['sync']['columns']);
                         }
 
+                        $configuredColumns = array_keys($columnMappings);
+
+                        $changedColumns = $this->getChangedColumns($event);
+
+                        if (empty(array_intersect($configuredColumns, $changedColumns))) {
+                            continue;
+                        }
+
                         $sourcePrimaryKey = $sourceConfig['reference_key'];
                         $targetDatabase = $targetConfig['database'];
                         $targetTable = $targetConfig['table'];
                         $targetPrimaryKey = $targetConfig['reference_key'];
 
-                        foreach ($event->values as $row) {
+                        $interceptFunction = $sourceConfig['intercept'] ?? $targetConfig['intercept'] ?? false;
 
+                        foreach ($event->values as $row) {
                             switch ($event::class) {
                                 case UpdateRowsDTO::class:
-
                                     $before = $row['before'];
                                     $after = $row['after'];
+
+                                    if ($interceptFunction && method_exists($this->helper, $interceptFunction)) {
+                                        $after = $this->helper->{$interceptFunction}($after);
+                                    }
 
                                     $this->handleUpdate(
                                         $sourcePrimaryKey,
@@ -105,28 +120,67 @@ class StartReplicationCommand extends Command
                                     break;
 
                                 case WriteRowsDTO::class:
+                                    $data = $row;
+
+                                    if ($interceptFunction && method_exists($this->helper, $interceptFunction)) {
+                                        $data = $this->helper->{$interceptFunction}($row);
+                                    }
+
                                     $this->handleInsert(
                                         $targetDatabase,
                                         $targetTable,
                                         $columnMappings,
-                                        $row
+                                        $data
                                     );
                                     break;
 
                                 case DeleteRowsDTO::class:
+                                    $data = $row;
+
+                                    if ($interceptFunction && method_exists($this->helper, $interceptFunction)) {
+                                        $data = $this->helper->{$interceptFunction}($row);
+                                    }
+
                                     $this->handleDelete(
                                         $sourcePrimaryKey,
                                         $targetDatabase,
                                         $targetTable,
                                         $targetPrimaryKey,
-                                        $row
+                                        $data
                                     );
                                     break;
-
                             }
                         }
                     }
                 }
+            }
+
+            private function getChangedColumns(EventDTO $event): array
+            {
+                $changedColumns = [];
+
+                if ($event instanceof UpdateRowsDTO) {
+                    foreach ($event->values as $row) {
+                        $before = $row['before'];
+                        $after = $row['after'];
+
+                        foreach ($before as $column => $value) {
+                            if ($before[$column] !== $after[$column]) {
+                                $changedColumns[] = $column;
+                            }
+                        }
+                    }
+                } elseif ($event instanceof WriteRowsDTO) {
+                    foreach ($event->values as $row) {
+                        $changedColumns = array_keys($row);
+                    }
+                } elseif ($event instanceof DeleteRowsDTO) {
+                    foreach ($event->values as $row) {
+                        $changedColumns = array_keys($row['values'] ?? $row['before'] ?? $row);
+                    }
+                }
+
+                return $changedColumns;
             }
 
             private function handleUpdate(
@@ -178,10 +232,6 @@ class StartReplicationCommand extends Command
                 array  $data
             ): void
             {
-                /*
-                 * Mapear os nomes das colunas conforme o $columnMappings.
-                 * Isso garante que colunas com nomes diferentes sejam replicadas corretamente.
-                 *  */
                 $mappedData = [];
                 foreach ($data as $column => $value) {
                     if (isset($columnMappings[$column])) {
@@ -213,7 +263,7 @@ class StartReplicationCommand extends Command
                 string $targetDatabase,
                 string $targetTable,
                 string $targetPrimaryKey,
-                array $data
+                array  $data
             ): void
             {
 
