@@ -115,12 +115,14 @@ class StartReplicationCommand extends Command
 
                                 case DeleteRowsDTO::class:
                                     $this->handleDelete(
+                                        $sourcePrimaryKey,
                                         $targetDatabase,
                                         $targetTable,
                                         $targetPrimaryKey,
                                         $row
                                     );
                                     break;
+
                             }
                         }
                     }
@@ -148,10 +150,6 @@ class StartReplicationCommand extends Command
                 if (!empty($changedColumns)) {
                     $primaryKeyValue = $after[$sourcePrimaryKey];
 
-                    $binds = [];
-                    foreach ($changedColumns as $column => $value) {
-                        $binds[":{$column}"] = $value;
-                    }
                     $binds = array_combine(
                         array_map(fn($column) => ":{$column}", array_keys($changedColumns)),
                         array_values($changedColumns)
@@ -167,7 +165,9 @@ class StartReplicationCommand extends Command
                         "UPDATE {$targetDatabase}.{$targetTable}
                         SET {$clausule}
                         WHERE {$targetDatabase}.{$targetTable}.{$targetPrimaryKey} = :{$targetPrimaryKey} {$replicateTag};",
-                        $binds);
+                        $binds
+                    );
+
                 }
             }
 
@@ -205,23 +205,28 @@ class StartReplicationCommand extends Command
                     $sql,
                     $binds
                 );
-                if (!empty($data)) {
-                    DB::statement('SET SESSION sql_log_bin=0;');
-
-                    DB::table("{$targetDatabase}.{$targetTable}")
-                        ->insert($data);
-
-                    DB::statement('SET SESSION sql_log_bin=1;');
-                }
 
             }
 
-            private function handleDelete(string $targetDatabase, string $targetTable, string $targetPrimaryKey, array $data): void
+            private function handleDelete(
+                string $sourcePrimaryKey,
+                string $targetDatabase,
+                string $targetTable,
+                string $targetPrimaryKey,
+                array $data
+            ): void
             {
 
-                //
+                $primaryKeyValue = $data[$sourcePrimaryKey];
+
+                $replicateTag = Event::REPLICATION_QUERY;
+                DB::delete(
+                    "DELETE FROM {$targetDatabase}.{$targetTable} WHERE {$targetDatabase}.{$targetTable}.{$targetPrimaryKey} = :{$targetPrimaryKey} {$replicateTag};",
+                    [":{$targetPrimaryKey}" => $primaryKeyValue]
+                );
 
             }
+
         };
 
         $builder = (new ConfigBuilder())
