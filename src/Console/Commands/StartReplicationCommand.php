@@ -108,6 +108,7 @@ class StartReplicationCommand extends Command
                                     $this->handleInsert(
                                         $targetDatabase,
                                         $targetTable,
+                                        $columnMappings,
                                         $row
                                     );
                                     break;
@@ -173,17 +174,30 @@ class StartReplicationCommand extends Command
             private function handleInsert(
                 string $targetDatabase,
                 string $targetTable,
+                array  $columnMappings,
                 array  $data
             ): void
             {
+                /*
+                 * Mapear os nomes das colunas conforme o $columnMappings.
+                 * Isso garante que colunas com nomes diferentes sejam replicadas corretamente.
+                 *  */
+                $mappedData = [];
+                foreach ($data as $column => $value) {
+                    if (isset($columnMappings[$column])) {
+                        $mappedData[$columnMappings[$column]] = $value;
+                    } else {
+                        $mappedData[$column] = $value;
+                    }
+                }
 
                 $replicateTag = Event::REPLICATION_QUERY;
                 $binds = array_map(function ($value) {
                     return is_null($value) ? null : $value;
-                }, $data);
+                }, $mappedData);
 
-                $columns = implode(',', array_keys($data));
-                $placeholders = implode(',', array_map(fn($column) => ":{$column}", array_keys($data)));
+                $columns = implode(',', array_keys($mappedData));
+                $placeholders = implode(',', array_map(fn($column) => ":{$column}", array_keys($mappedData)));
 
                 $sql = "INSERT INTO {$targetDatabase}.{$targetTable} ({$columns}) VALUES ({$placeholders}) {$replicateTag};";
 
@@ -205,11 +219,7 @@ class StartReplicationCommand extends Command
             private function handleDelete(string $targetDatabase, string $targetTable, string $targetPrimaryKey, array $data): void
             {
 
-                $primaryKeyValue = $data[$targetPrimaryKey];
-
-                DB::table("{$targetDatabase}.{$targetTable}")
-                    ->where($targetPrimaryKey, $primaryKeyValue)
-                    ->delete();
+                //
 
             }
         };
