@@ -9,22 +9,8 @@ class ReplicatorServiceProvider extends ServiceProvider
 {
     public function register()
     {
-
         $this->commands([
             StartReplicationCommand::class,
         ]);
-
-        $this->mergeConfigFrom(
-            __DIR__ . '/../config/Replicator.php',
-            'replicator'
-        );
-    }
-
-    public function boot()
-    {
-        $this->publishes([
-            __DIR__ . '/../config/Replicator.php' => config_path('replicator.php'),
-        ], 'config');
-
     }
 }

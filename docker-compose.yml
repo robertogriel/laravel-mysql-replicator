@@ -1,7 +1,0 @@
-services:
-    app:
-        build: .
-        ports:
-            - "8081:80"
-        volumes:
-            - .:/var/www/html
