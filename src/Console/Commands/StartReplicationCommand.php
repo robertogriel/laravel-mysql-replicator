@@ -20,7 +20,7 @@ class StartReplicationCommand extends Command
 {
     protected $signature = 'replicator:start';
     protected $description = 'Inicia o processo de replicação configurado no pacote Replicator';
-    public const CACHE_LAST_CHANGES = 'replicador.colaborador_loja.ultima_alteracao';
+    protected const CACHED_LAST_CHANGES = 'replicator_last_changes';
 
     public function handle(): void
     {
@@ -40,13 +40,14 @@ class StartReplicationCommand extends Command
         $tables = array_unique($tables);
 
         $registration = new class($configurations) extends EventSubscribers {
-            private array $configurations;
             private ReplicatorHelper $helper;
+            private array $configurations;
+            protected const CACHED_LAST_CHANGES = 'replicator_last_changes';
 
             public function __construct(array $configurations)
             {
-                $this->configurations = $configurations;
                 $this->helper = new ReplicatorHelper();
+                $this->configurations = $configurations;
             }
 
             public function allEvents(EventDTO $event): void
@@ -58,6 +59,16 @@ class StartReplicationCommand extends Command
 
                 $database = $event->tableMap->database;
                 $table = $event->tableMap->table;
+
+                $binLogInfo = $event->getEventInfo()->binLogCurrent;
+                Cache::put(
+                    self::CACHED_LAST_CHANGES,
+                    [
+                        'position' => $binLogInfo->getBinLogPosition(),
+                        'file' => $binLogInfo->getBinFileName(),
+                    ],
+                    60 * 60 * 24
+                );
 
                 foreach ($this->configurations as $config) {
                     $sourceDatabase = $config['database'];
@@ -197,6 +208,7 @@ class StartReplicationCommand extends Command
                 foreach ($columnMappings as $sourceColumn => $targetColumn) {
 
                     if (array_diff_assoc($before, $after)) {
+                    if ($before[$sourceColumn] !== $after[$sourceColumn]) {
                         $changedColumns[$targetColumn] = $after[$sourceColumn];
                     }
                 }
@@ -232,6 +244,10 @@ class StartReplicationCommand extends Command
                 array  $data
             ): void
             {
+                /*
+                 * Mapear os nomes das colunas conforme o $columnMappings.
+                 * Isso garante que colunas com nomes diferentes sejam replicadas corretamente.
+                 *  */
                 $mappedData = [];
                 foreach ($data as $column => $value) {
                     if (isset($columnMappings[$column])) {
@@ -293,10 +309,10 @@ class StartReplicationCommand extends Command
             ->withDatabasesOnly($databases)
             ->withTablesOnly($tables);
 
-        $lastBinlogChange = Cache::get(self::CACHE_LAST_CHANGES);
+        $lastBinlogChange = Cache::get(self::CACHED_LAST_CHANGES);
         if (!empty($lastBinlogChange)) {
-            $builder->withBinLogFileName($lastBinlogChange['arquivo'])
-                ->withBinLogPosition($lastBinlogChange['posicao']);
+            $builder->withBinLogFileName($lastBinlogChange['file'])
+                ->withBinLogPosition($lastBinlogChange['position']);
         }
 
         $replication = new MySQLReplicationFactory($builder->build());
