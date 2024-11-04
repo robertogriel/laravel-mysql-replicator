@@ -60,16 +60,6 @@ class StartReplicationCommand extends Command
                 $database = $event->tableMap->database;
                 $table = $event->tableMap->table;
 
-                $binLogInfo = $event->getEventInfo()->binLogCurrent;
-                Cache::put(
-                    self::CACHED_LAST_CHANGES,
-                    [
-                        'position' => $binLogInfo->getBinLogPosition(),
-                        'file' => $binLogInfo->getBinFileName(),
-                    ],
-                    60 * 60 * 24
-                );
-
                 foreach ($this->configurations as $config) {
                     $sourceDatabase = $config['database'];
                     $sourceTable = $config['table'];
@@ -162,6 +152,16 @@ class StartReplicationCommand extends Command
                                     break;
                             }
                         }
+
+                        $binLogInfo = $event->getEventInfo()->binLogCurrent;
+                        Cache::put(
+                            self::CACHED_LAST_CHANGES,
+                            [
+                                'position' => $binLogInfo->getBinLogPosition(),
+                                'file' => $binLogInfo->getBinFileName(),
+                            ],
+                            60 * 60 * 24
+                        );
                     }
                 }
             }
