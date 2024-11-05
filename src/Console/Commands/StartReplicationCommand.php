@@ -2,9 +2,10 @@
 
 namespace robertogriel\Replicator\Console\Commands;
 
-use App\Helpers\ReplicatorHelper;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use MySQLReplication\Config\ConfigBuilder;
 use MySQLReplication\Definitions\ConstEventType;
@@ -24,29 +25,29 @@ class StartReplicationCommand extends Command
 
     public function handle(): void
     {
-        $configurations = config('replicator');
+        $configurations = Config::get('replicator');
 
         $databases = [];
         $tables = [];
+        $columns = [];
 
         foreach ($configurations as $config) {
-            $databases[] = $config['database'];
-            $databases[] = $config['sync']['database'];
-            $tables[] = $config['table'];
-            $tables[] = $config['sync']['table'];
+            $databases[] = $config['source']['database'];
+            $databases[] = $config['target']['database'];
+            $tables[] = $config['source']['table'];
+            $tables[] = $config['target']['table'];
+            $columns = array_merge($columns, array_keys($config['columns']));
         }
 
         $databases = array_unique($databases);
         $tables = array_unique($tables);
 
         $registration = new class($configurations) extends EventSubscribers {
-            private ReplicatorHelper $helper;
             private array $configurations;
             protected const CACHED_LAST_CHANGES = 'replicator_last_changes';
 
             public function __construct(array $configurations)
             {
-                $this->helper = new ReplicatorHelper();
                 $this->configurations = $configurations;
             }
 
@@ -61,10 +62,10 @@ class StartReplicationCommand extends Command
                 $table = $event->tableMap->table;
 
                 foreach ($this->configurations as $config) {
-                    $sourceDatabase = $config['database'];
-                    $sourceTable = $config['table'];
-                    $targetDatabase = $config['sync']['database'];
-                    $targetTable = $config['sync']['table'];
+                    $sourceDatabase = $config['source']['database'];
+                    $sourceTable = $config['source']['table'];
+                    $targetDatabase = $config['target']['database'];
+                    $targetTable = $config['target']['table'];
 
                     if (
                         ($database === $sourceDatabase && $table === $sourceTable) ||
@@ -72,16 +73,16 @@ class StartReplicationCommand extends Command
                     ) {
 
                         if (
-                            $event->tableMap->database === $config['database'] &&
-                            $event->tableMap->table === $config['table']
+                            $event->tableMap->database === $sourceDatabase &&
+                            $event->tableMap->table === $sourceTable
                         ) {
-                            $sourceConfig = $config;
-                            $targetConfig = $config['sync'];
-                            $columnMappings = $config['sync']['columns'];
+                            $sourceConfig = $config['source'];
+                            $targetConfig = $config['target'];
+                            $columnMappings = $config['columns'];
                         } else {
-                            $sourceConfig = $config['sync'];
-                            $targetConfig = $config;
-                            $columnMappings = array_flip($config['sync']['columns']);
+                            $sourceConfig = $config['target'];
+                            $targetConfig = $config['source'];
+                            $columnMappings = array_flip($config['columns']);
                         }
 
                         $configuredColumns = array_keys($columnMappings);
@@ -97,7 +98,7 @@ class StartReplicationCommand extends Command
                         $targetTable = $targetConfig['table'];
                         $targetPrimaryKey = $targetConfig['reference_key'];
 
-                        $interceptFunction = $sourceConfig['intercept'] ?? $targetConfig['intercept'] ?? false;
+                        $interceptorFunction = $config['interceptor'] ?? false;
 
                         foreach ($event->values as $row) {
                             switch ($event::class) {
@@ -105,8 +106,12 @@ class StartReplicationCommand extends Command
                                     $before = $row['before'];
                                     $after = $row['after'];
 
-                                    if ($interceptFunction && method_exists($this->helper, $interceptFunction)) {
-                                        $after = $this->helper->{$interceptFunction}($after);
+                                    if ($interceptorFunction) {
+                                        $after = App::call($interceptorFunction, [
+                                            'data' => $after,
+                                            'sourceTable' => $sourceTable,
+                                            'sourceDatabase' => $sourceDatabase,
+                                        ]);
                                     }
 
                                     $this->handleUpdate(
@@ -123,8 +128,8 @@ class StartReplicationCommand extends Command
                                 case WriteRowsDTO::class:
                                     $data = $row;
 
-                                    if ($interceptFunction && method_exists($this->helper, $interceptFunction)) {
-                                        $data = $this->helper->{$interceptFunction}($row);
+                                    if ($interceptorFunction && method_exists($this->helper, $interceptorFunction)) {
+                                        $data = $this->helper->{$interceptorFunction}($row);
                                     }
 
                                     $this->handleInsert(
@@ -138,8 +143,8 @@ class StartReplicationCommand extends Command
                                 case DeleteRowsDTO::class:
                                     $data = $row;
 
-                                    if ($interceptFunction && method_exists($this->helper, $interceptFunction)) {
-                                        $data = $this->helper->{$interceptFunction}($row);
+                                    if ($interceptorFunction && method_exists($this->helper, $interceptorFunction)) {
+                                        $data = $this->helper->{$interceptorFunction}($row);
                                     }
 
                                     $this->handleDelete(
@@ -170,28 +175,21 @@ class StartReplicationCommand extends Command
             {
                 $changedColumns = [];
 
-                if ($event instanceof UpdateRowsDTO) {
-                    foreach ($event->values as $row) {
-                        $before = $row['before'];
-                        $after = $row['after'];
-
-                        foreach ($before as $column => $value) {
-                            if ($before[$column] !== $after[$column]) {
-                                $changedColumns[] = $column;
-                            }
-                        }
-                    }
-                } elseif ($event instanceof WriteRowsDTO) {
-                    foreach ($event->values as $row) {
-                        $changedColumns = array_keys($row);
-                    }
-                } elseif ($event instanceof DeleteRowsDTO) {
-                    foreach ($event->values as $row) {
-                        $changedColumns = array_keys($row['values'] ?? $row['before'] ?? $row);
+                foreach ($event->values as $row) {
+                    switch ($event::class) {
+                        case UpdateRowsDTO::class:
+                            $changedColumns = array_merge($changedColumns, array_keys(array_diff_assoc($row['after'], $row['before'])));
+                            break;
+                        case WriteRowsDTO::class:
+                            $changedColumns = array_merge($changedColumns, array_keys($row));
+                            break;
+                        case DeleteRowsDTO::class:
+                            $changedColumns = array_merge($changedColumns, array_keys($row['values'] ?? $row['before'] ?? $row));
+                            break;
                     }
                 }
 
-                return $changedColumns;
+                return array_unique($changedColumns);
             }
 
             private function handleUpdate(
@@ -206,8 +204,6 @@ class StartReplicationCommand extends Command
             {
                 $changedColumns = [];
                 foreach ($columnMappings as $sourceColumn => $targetColumn) {
-
-                    if (array_diff_assoc($before, $after)) {
                     if ($before[$sourceColumn] !== $after[$sourceColumn]) {
                         $changedColumns[$targetColumn] = $after[$sourceColumn];
                     }
