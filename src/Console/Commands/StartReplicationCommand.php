@@ -4,7 +4,6 @@ namespace robertogriel\Replicator\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use MySQLReplication\Config\ConfigBuilder;
@@ -159,14 +158,13 @@ class StartReplicationCommand extends Command
                         }
 
                         $binLogInfo = $event->getEventInfo()->binLogCurrent;
-                        Cache::put(
-                            self::CACHED_LAST_CHANGES,
-                            [
-                                'position' => $binLogInfo->getBinLogPosition(),
-                                'file' => $binLogInfo->getBinFileName(),
-                            ],
-                            60 * 60 * 24
+
+                        $envDB = env('REPLICATOR_DB');
+                        DB::update(
+                            "UPDATE {$envDB}.settings SET {$envDB}.settings.json_binlog = :json_binlog;",
+                            ['json_binlog' => json_encode(['file' => $binLogInfo->getBinFileName(), 'position' => $binLogInfo->getBinLogPosition()])]
                         );
+
                     }
                 }
             }
@@ -305,8 +303,10 @@ class StartReplicationCommand extends Command
             ->withDatabasesOnly($databases)
             ->withTablesOnly($tables);
 
-        $lastBinlogChange = Cache::get(self::CACHED_LAST_CHANGES);
-        if (!empty($lastBinlogChange)) {
+        $envDB = env('REPLICATOR_DB');
+        $lastBinlogChange = json_decode(DB::selectOne("SELECT {$envDB}.settings.json_binlog from {$envDB}.settings")->json_binlog, true);
+
+        if (!empty($lastBinlogChange['file']) && !empty($lastBinlogChange['position'])) {
             $builder->withBinLogFileName($lastBinlogChange['file'])
                 ->withBinLogPosition($lastBinlogChange['position']);
         }
