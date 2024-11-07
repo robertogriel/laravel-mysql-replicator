@@ -31,10 +31,10 @@ class StartReplicationCommand extends Command
         $columns = [];
 
         foreach ($configurations as $config) {
-            $databases[] = $config['source']['database'];
-            $databases[] = $config['target']['database'];
-            $tables[] = $config['source']['table'];
-            $tables[] = $config['target']['table'];
+            $databases[] = $config['node_primary']['database'] ?? env('DB_DATABASE');
+            $databases[] = $config['node_secondary']['database'];
+            $tables[] = $config['node_primary']['table'];
+            $tables[] = $config['node_secondary']['table'];
             $columns = array_merge($columns, array_keys($config['columns']));
         }
 
@@ -43,7 +43,6 @@ class StartReplicationCommand extends Command
 
         $registration = new class($configurations) extends EventSubscribers {
             private array $configurations;
-            protected const CACHED_LAST_CHANGES = 'replicator_last_changes';
 
             public function __construct(array $configurations)
             {
@@ -61,26 +60,26 @@ class StartReplicationCommand extends Command
                 $table = $event->tableMap->table;
 
                 foreach ($this->configurations as $config) {
-                    $sourceDatabase = $config['source']['database'];
-                    $sourceTable = $config['source']['table'];
-                    $targetDatabase = $config['target']['database'];
-                    $targetTable = $config['target']['table'];
+                    $nodePrimaryDatabase = $config['node_primary']['database'];
+                    $nodePrimaryTable = $config['node_primary']['table'];
+                    $nodeSecondaryDatabase = $config['node_secondary']['database'];
+                    $nodeSecondaryTable = $config['node_secondary']['table'];
 
                     if (
-                        ($database === $sourceDatabase && $table === $sourceTable) ||
-                        ($database === $targetDatabase && $table === $targetTable)
+                        ($database === $nodePrimaryDatabase && $table === $nodePrimaryTable) ||
+                        ($database === $nodeSecondaryDatabase && $table === $nodeSecondaryTable)
                     ) {
 
                         if (
-                            $event->tableMap->database === $sourceDatabase &&
-                            $event->tableMap->table === $sourceTable
+                            $event->tableMap->database === $nodePrimaryDatabase &&
+                            $event->tableMap->table === $nodePrimaryTable
                         ) {
-                            $sourceConfig = $config['source'];
-                            $targetConfig = $config['target'];
+                            $nodePrimaryConfig = $config['node_primary'];
+                            $nodeSecondaryConfig = $config['node_secondary'];
                             $columnMappings = $config['columns'];
                         } else {
-                            $sourceConfig = $config['target'];
-                            $targetConfig = $config['source'];
+                            $nodePrimaryConfig = $config['node_secondary'];
+                            $nodeSecondaryConfig = $config['node_primary'];
                             $columnMappings = array_flip($config['columns']);
                         }
 
@@ -92,10 +91,10 @@ class StartReplicationCommand extends Command
                             continue;
                         }
 
-                        $sourcePrimaryKey = $sourceConfig['reference_key'];
-                        $targetDatabase = $targetConfig['database'];
-                        $targetTable = $targetConfig['table'];
-                        $targetPrimaryKey = $targetConfig['reference_key'];
+                        $nodePrimaryReferenceKey = $nodePrimaryConfig['reference_key'];
+                        $nodeSecondaryDatabase = $nodeSecondaryConfig['database'];
+                        $nodeSecondaryTable = $nodeSecondaryConfig['table'];
+                        $nodeSecondaryReferenceKey = $nodeSecondaryConfig['reference_key'];
 
                         $interceptorFunction = $config['interceptor'] ?? false;
 
@@ -108,16 +107,16 @@ class StartReplicationCommand extends Command
                                     if ($interceptorFunction) {
                                         $after = App::call($interceptorFunction, [
                                             'data' => $after,
-                                            'sourceTable' => $sourceTable,
-                                            'sourceDatabase' => $sourceDatabase,
+                                            'nodePrimaryTable' => $nodePrimaryTable,
+                                            'nodePrimaryDatabase' => $nodePrimaryDatabase,
                                         ]);
                                     }
 
                                     $this->handleUpdate(
-                                        $sourcePrimaryKey,
-                                        $targetDatabase,
-                                        $targetTable,
-                                        $targetPrimaryKey,
+                                        $nodePrimaryReferenceKey,
+                                        $nodeSecondaryDatabase,
+                                        $nodeSecondaryTable,
+                                        $nodeSecondaryReferenceKey,
                                         $columnMappings,
                                         $before,
                                         $after
@@ -132,8 +131,8 @@ class StartReplicationCommand extends Command
                                     }
 
                                     $this->handleInsert(
-                                        $targetDatabase,
-                                        $targetTable,
+                                        $nodeSecondaryDatabase,
+                                        $nodeSecondaryTable,
                                         $columnMappings,
                                         $data
                                     );
@@ -147,10 +146,10 @@ class StartReplicationCommand extends Command
                                     }
 
                                     $this->handleDelete(
-                                        $sourcePrimaryKey,
-                                        $targetDatabase,
-                                        $targetTable,
-                                        $targetPrimaryKey,
+                                        $nodePrimaryReferenceKey,
+                                        $nodeSecondaryDatabase,
+                                        $nodeSecondaryTable,
+                                        $nodeSecondaryReferenceKey,
                                         $data
                                     );
                                     break;
@@ -191,40 +190,40 @@ class StartReplicationCommand extends Command
             }
 
             private function handleUpdate(
-                string $sourcePrimaryKey,
-                string $targetDatabase,
-                string $targetTable,
-                string $targetPrimaryKey,
+                string $nodePrimaryReferenceKey,
+                string $nodeSecondaryDatabase,
+                string $nodeSecondaryTable,
+                string $nodeSecondaryReferenceKey,
                 array  $columnMappings,
                 array  $before,
                 array  $after
             ): void
             {
                 $changedColumns = [];
-                foreach ($columnMappings as $sourceColumn => $targetColumn) {
-                    if ($before[$sourceColumn] !== $after[$sourceColumn]) {
-                        $changedColumns[$targetColumn] = $after[$sourceColumn];
+                foreach ($columnMappings as $nodePrimaryColumn => $nodeSecondaryColumn) {
+                    if ($before[$nodePrimaryColumn] !== $after[$nodePrimaryColumn]) {
+                        $changedColumns[$nodeSecondaryColumn] = $after[$nodePrimaryColumn];
                     }
                 }
 
                 if (!empty($changedColumns)) {
-                    $primaryKeyValue = $after[$sourcePrimaryKey];
+                    $referenceKeyValue = $after[$nodePrimaryReferenceKey];
 
                     $binds = array_combine(
                         array_map(fn($column) => ":{$column}", array_keys($changedColumns)),
                         array_values($changedColumns)
                     );
-                    $binds[":{$targetPrimaryKey}"] = $primaryKeyValue;
+                    $binds[":{$nodeSecondaryReferenceKey}"] = $referenceKeyValue;
 
                     $replicateTag = Event::REPLICATION_QUERY;
-                    $clausule = implode(', ', array_map(function ($column) use ($targetDatabase, $targetTable) {
-                        return "{$targetDatabase}.{$targetTable}.{$column} = :{$column}";
+                    $clausule = implode(', ', array_map(function ($column) use ($nodeSecondaryDatabase, $nodeSecondaryTable) {
+                        return "{$nodeSecondaryDatabase}.{$nodeSecondaryTable}.{$column} = :{$column}";
                     }, array_keys($changedColumns)));
 
                     DB::update(
-                        "UPDATE {$targetDatabase}.{$targetTable}
+                        "UPDATE {$nodeSecondaryDatabase}.{$nodeSecondaryTable}
                         SET {$clausule}
-                        WHERE {$targetDatabase}.{$targetTable}.{$targetPrimaryKey} = :{$targetPrimaryKey} {$replicateTag};",
+                        WHERE {$nodeSecondaryDatabase}.{$nodeSecondaryTable}.{$nodeSecondaryReferenceKey} = :{$nodeSecondaryReferenceKey} {$replicateTag};",
                         $binds
                     );
 
@@ -232,8 +231,8 @@ class StartReplicationCommand extends Command
             }
 
             private function handleInsert(
-                string $targetDatabase,
-                string $targetTable,
+                string $nodeSecondaryDatabase,
+                string $nodeSecondaryTable,
                 array  $columnMappings,
                 array  $data
             ): void
@@ -259,7 +258,7 @@ class StartReplicationCommand extends Command
                 $columns = implode(',', array_keys($mappedData));
                 $placeholders = implode(',', array_map(fn($column) => ":{$column}", array_keys($mappedData)));
 
-                $sql = "INSERT INTO {$targetDatabase}.{$targetTable} ({$columns}) VALUES ({$placeholders}) {$replicateTag};";
+                $sql = "INSERT INTO {$nodeSecondaryDatabase}.{$nodeSecondaryTable} ({$columns}) VALUES ({$placeholders}) {$replicateTag};";
 
                 DB::insert(
                     $sql,
@@ -269,20 +268,20 @@ class StartReplicationCommand extends Command
             }
 
             private function handleDelete(
-                string $sourcePrimaryKey,
-                string $targetDatabase,
-                string $targetTable,
-                string $targetPrimaryKey,
+                string $nodePrimaryReferenceKey,
+                string $nodeSecondaryDatabase,
+                string $nodeSecondaryTable,
+                string $nodeSecondaryReferenceKey,
                 array  $data
             ): void
             {
 
-                $primaryKeyValue = $data[$sourcePrimaryKey];
+                $referenceKeyValue = $data[$nodePrimaryReferenceKey];
 
                 $replicateTag = Event::REPLICATION_QUERY;
                 DB::delete(
-                    "DELETE FROM {$targetDatabase}.{$targetTable} WHERE {$targetDatabase}.{$targetTable}.{$targetPrimaryKey} = :{$targetPrimaryKey} {$replicateTag};",
-                    [":{$targetPrimaryKey}" => $primaryKeyValue]
+                    "DELETE FROM {$nodeSecondaryDatabase}.{$nodeSecondaryTable} WHERE {$nodeSecondaryDatabase}.{$nodeSecondaryTable}.{$nodeSecondaryReferenceKey} = :{$nodeSecondaryReferenceKey} {$replicateTag};",
+                    [":{$nodeSecondaryReferenceKey}" => $referenceKeyValue]
                 );
 
             }
