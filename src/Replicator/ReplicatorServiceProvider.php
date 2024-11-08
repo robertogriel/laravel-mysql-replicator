@@ -7,10 +7,8 @@ use robertogriel\Replicator\Console\Commands\StartReplicationCommand;
 
 class ReplicatorServiceProvider extends ServiceProvider
 {
-    public function register()
+    public function register(): void
     {
-        $this->commands([
-            StartReplicationCommand::class,
-        ]);
+        $this->commands([StartReplicationCommand::class]);
     }
 }
