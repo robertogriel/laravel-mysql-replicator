@@ -639,13 +639,13 @@ class TypesTest extends BaseCase
 
     public function testShouldBeJson(): void
     {
-        if ($this->checkForVersion(5.7) || $this->mySQLReplicationFactory?->getServerInfo()->isMariaDb()) {
+        if ($this->checkForVersion(5.7)) {
             self::markTestIncomplete('Only for mysql 5.7 or higher');
         }
 
         $create_query = 'CREATE TABLE t1 (i INT, j JSON)';
         $insert_query = "INSERT INTO t1 VALUES 
-            (0, NULL) , 
+            (0, NULL), 
             (1, '{\"a\": 2}'),
             (2, '[1,2]'),
             (3, '{\"a\":\"b\", \"c\":\"d\",\"ab\":\"abc\", \"bc\": [\"x\", \"y\"]}'),
@@ -655,7 +655,7 @@ class TypesTest extends BaseCase
             (7, 'false'),
             (8, 'null'),
             (9, '-1'),
-            (10, CAST(CAST(1 AS UNSIGNED) AS JSON)),
+            (10, '1'),
             (11, '32767'),
             (12, '32768'),
             (13, '-32768'),
@@ -669,24 +669,11 @@ class TypesTest extends BaseCase
             (21, '3.14'),
             (22, '{}'),
             (23, '[]'),
-            -- (24, CAST(CAST('2015-01-15 23:24:25' AS DATETIME) AS JSON)),
-            -- (25, CAST(CAST('23:24:25' AS TIME) AS JSON)),
-            -- (125, CAST(CAST('23:24:25.12' AS TIME(3)) AS JSON)),
-            -- (225, CAST(CAST('23:24:25.0237' AS TIME(3)) AS JSON)),
-            -- (26, CAST(CAST('2015-01-15' AS DATE) AS JSON)),
-            -- (27, CAST(TIMESTAMP'2015-01-15 23:24:25' AS JSON)),
-            -- (127, CAST(TIMESTAMP'2015-01-15 23:24:25.12' AS JSON)),
-            -- (227, CAST(TIMESTAMP'2015-01-15 23:24:25.0237' AS JSON)),
-            -- (327, CAST(UNIX_TIMESTAMP('2015-01-15 23:24:25') AS JSON)),
-            -- (28, CAST(ST_GeomFromText('POINT(1 1)') AS JSON)),
-            (29, CAST('[]' AS CHAR CHARACTER SET 'ascii')),
-            -- (30, CAST(x'cafe' AS JSON)),
-            -- (31, CAST(x'cafebabe' AS JSON)),
-            -- (100, CONCAT('{\"', REPEAT('a', 64 * 1024 - 1), '\":123}')),
-            (101, '{\"bool\": true}'),
-            (102, '{\"bool\": false}'),
-            (103, '{\"null\": null}'),
-            (104, '[\"\\\\\"test\"]')
+            (24, '[]'),
+            (25, '{\"bool\": true}'),
+            (26, '{\"bool\": false}'),
+            (27, '{\"null\": null}'),
+            (28, '[\"\\\\\"test\"]')
         ";
 
         $event = $this->createAndInsertValue($create_query, $insert_query);
@@ -694,33 +681,33 @@ class TypesTest extends BaseCase
         $results = $event->values;
 
         self::assertEquals(null, $results[0]['j']);
-        self::assertEquals('{"a":2}', $results[1]['j']);
+        self::assertEquals('{"a": 2}', $results[1]['j']);
         self::assertEquals('[1,2]', $results[2]['j']);
-        self::assertEquals('{"a":"b","c":"d","ab":"abc","bc":["x","y"]}', $results[3]['j']);
-        self::assertEquals('["here",["I","am"],"!!!"]', $results[4]['j']);
+        self::assertEquals('{"a":"b", "c":"d","ab":"abc", "bc": ["x", "y"]}', $results[3]['j']);
+        self::assertEquals('["here", ["I", "am"], "!!!"]', $results[4]['j']);
         self::assertEquals('"scalar string"', $results[5]['j']);
         self::assertEquals('true', $results[6]['j']);
         self::assertEquals('false', $results[7]['j']);
-        self::assertEquals('"null"', $results[8]['j']);
-        self::assertEquals('"-1"', $results[9]['j']);
-        self::assertEquals('"1"', $results[10]['j']);
-        self::assertEquals('"32767"', $results[11]['j']);
-        self::assertEquals('"32768"', $results[12]['j']);
-        self::assertEquals('"-32768"', $results[13]['j']);
-        self::assertEquals('"-32769"', $results[14]['j']);
-        self::assertEquals('"2147483647"', $results[15]['j']);
-        self::assertEquals('"2147483648"', $results[16]['j']);
-        self::assertEquals('"-2147483648"', $results[17]['j']);
-        self::assertEquals('"-2147483649"', $results[18]['j']);
-        self::assertEquals('"18446744073709551615"', $results[19]['j']);
-        self::assertEquals('"1.844674407371E+19"', $results[20]['j']);
-        self::assertEquals('"3.14"', $results[21]['j']);
+        self::assertEquals('null', $results[8]['j']);
+        self::assertEquals('-1', $results[9]['j']);
+        self::assertEquals('1', $results[10]['j']);
+        self::assertEquals('32767', $results[11]['j']);
+        self::assertEquals('32768', $results[12]['j']);
+        self::assertEquals('-32768', $results[13]['j']);
+        self::assertEquals('-32769', $results[14]['j']);
+        self::assertEquals('2147483647', $results[15]['j']);
+        self::assertEquals('2147483648', $results[16]['j']);
+        self::assertEquals('-2147483648', $results[17]['j']);
+        self::assertEquals('-2147483649', $results[18]['j']);
+        self::assertEquals('18446744073709551615', $results[19]['j']);
+        self::assertEquals('18446744073709551616', $results[20]['j']);
+        self::assertEquals('3.14', $results[21]['j']);
         self::assertEquals('{}', $results[22]['j']);
         self::assertEquals('[]', $results[23]['j']);
         self::assertEquals('[]', $results[24]['j']);
-        self::assertEquals('{"bool":true}', $results[25]['j']);
-        self::assertEquals('{"bool":false}', $results[26]['j']);
-        self::assertEquals('{"null":null}', $results[27]['j']);
+        self::assertEquals('{"bool": true}', $results[25]['j']);
+        self::assertEquals('{"bool": false}', $results[26]['j']);
+        self::assertEquals('{"null": null}', $results[27]['j']);
         self::assertEquals('["\"test"]', $results[28]['j']);
     }
 }

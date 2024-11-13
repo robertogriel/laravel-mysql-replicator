@@ -37,9 +37,9 @@ abstract class BaseCase extends TestCase
         parent::setUp();
 
         $this->configBuilder = (new ConfigBuilder())
-            ->withUser('root')
-            ->withHost('0.0.0.0')
-            ->withPassword('root')
+            ->withUser('COLABORADOR_CENTRAL')
+            ->withHost('127.0.0.1')
+            ->withPassword('COLABORADOR_CENTRAL')
             ->withPort(3306)
             ->withEventsIgnore([ConstEventType::GTID_LOG_EVENT->value]);
 

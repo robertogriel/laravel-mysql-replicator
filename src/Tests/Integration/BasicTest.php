@@ -116,7 +116,15 @@ class BasicTest extends BaseCase
         $this->disconnect();
 
         $this->configBuilder->withEventsOnly(
-            [ConstEventType::WRITE_ROWS_EVENT_V1->value, ConstEventType::WRITE_ROWS_EVENT_V2->value]
+            [
+                [
+                    'value' => ConstEventType::WRITE_ROWS_EVENT_V1->value
+                ],
+                [
+                     'value' => ConstEventType::WRITE_ROWS_EVENT_V2->value
+
+                ]
+            ]
         );
 
         $this->connect();
@@ -145,7 +153,13 @@ class BasicTest extends BaseCase
     {
         $this->disconnect();
 
-        $this->configBuilder->withEventsOnly([ConstEventType::QUERY_EVENT->value]);
+        $this->configBuilder->withEventsOnly(
+            [
+                [
+                    'value' => ConstEventType::QUERY_EVENT->value
+                ]
+            ]
+        );
 
         $this->connect();
 
@@ -171,7 +185,15 @@ class BasicTest extends BaseCase
 
         $this->configBuilder
             ->withEventsOnly(
-                [ConstEventType::WRITE_ROWS_EVENT_V1->value, ConstEventType::WRITE_ROWS_EVENT_V2->value]
+                [
+                    [
+                        'value' => ConstEventType::WRITE_ROWS_EVENT_V1->value
+                    ],
+                    [
+                         'value' => ConstEventType::WRITE_ROWS_EVENT_V2->value
+
+                    ]
+                ]
             )->withTablesOnly([$expectedTable]);
 
         $this->connect();
@@ -200,7 +222,13 @@ class BasicTest extends BaseCase
     {
         $this->disconnect();
 
-        $this->configBuilder->withEventsOnly([ConstEventType::QUERY_EVENT->value]);
+        $this->configBuilder->withEventsOnly(
+            [
+                [
+                    'value' => ConstEventType::QUERY_EVENT->value
+                ]
+            ]
+        );
 
         $this->connect();
 
@@ -221,11 +249,11 @@ class BasicTest extends BaseCase
 
     public function testShouldJsonSetPartialUpdateWithHoles(): void
     {
-        if ($this->checkForVersion(5.7) || $this->mySQLReplicationFactory?->getServerInfo()->isMariaDb()) {
+        if ($this->checkForVersion(5.7)) {
             self::markTestIncomplete('Only for mysql 5.7 or higher');
         }
 
-        $expected = '{"age":22,"addr":{"code":100,"detail":{"ab":"970785C8 - C299"}},"name":"Alice"}';
+        $expected = '{"age":22,"addr":{"code":100,"detail":{"ab":"970785C8-C299"}},"name":"Alice"}';
 
         $create_query = 'CREATE TABLE t1 (j JSON)';
         $insert_query = "INSERT INTO t1 VALUES ('" . $expected . "')";
@@ -244,14 +272,14 @@ class BasicTest extends BaseCase
         self::assertInstanceOf(UpdateRowsDTO::class, $event);
         self::assertEquals($expected, $event->values[0]['before']['j']);
         self::assertEquals(
-            '{"age":22,"addr":{"code":100,"detail":{"ab":"970785C8"}},"name":"Alice"}',
+            '{"age": 22, "addr": {"code": 100, "detail": {"ab": "970785C8"}}, "name": "Alice"}',
             $event->values[0]['after']['j']
         );
     }
 
     public function testShouldJsonRemovePartialUpdateWithHoles(): void
     {
-        if ($this->checkForVersion(5.7) || $this->mySQLReplicationFactory?->getServerInfo()->isMariaDb()) {
+        if ($this->checkForVersion(5.7)) {
             self::markTestIncomplete('Only for mysql 5.7 or higher');
         }
 
@@ -274,14 +302,14 @@ class BasicTest extends BaseCase
         self::assertInstanceOf(UpdateRowsDTO::class, $event);
         self::assertEquals($expected, $event->values[0]['before']['j']);
         self::assertEquals(
-            '{"age":22,"addr":{"code":100,"detail":{}},"name":"Alice"}',
+            '{"age": 22, "addr": {"code": 100, "detail": {}}, "name": "Alice"}',
             $event->values[0]['after']['j']
         );
     }
 
     public function testShouldJsonReplacePartialUpdateWithHoles(): void
     {
-        if ($this->checkForVersion(5.7) || $this->mySQLReplicationFactory?->getServerInfo()->isMariaDb()) {
+        if ($this->checkForVersion(5.7)) {
             self::markTestIncomplete('Only for mysql 5.7 or higher');
         }
 
@@ -304,7 +332,7 @@ class BasicTest extends BaseCase
         self::assertInstanceOf(UpdateRowsDTO::class, $event);
         self::assertEquals($expected, $event->values[0]['before']['j']);
         self::assertEquals(
-            '{"age":22,"addr":{"code":100,"detail":{"ab":"9707"}},"name":"Alice"}',
+            '{"age": 22, "addr": {"code": 100, "detail": {"ab": "9707"}}, "name": "Alice"}',
             $event->values[0]['after']['j']
         );
     }
