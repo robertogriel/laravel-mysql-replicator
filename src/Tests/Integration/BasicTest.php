@@ -117,13 +117,8 @@ class BasicTest extends BaseCase
 
         $this->configBuilder->withEventsOnly(
             [
-                [
-                    'value' => ConstEventType::WRITE_ROWS_EVENT_V1->value
-                ],
-                [
-                     'value' => ConstEventType::WRITE_ROWS_EVENT_V2->value
-
-                ]
+                ['value' => ConstEventType::WRITE_ROWS_EVENT_V1->value],
+                ['value' => ConstEventType::WRITE_ROWS_EVENT_V2->value]
             ]
         );
 
@@ -155,9 +150,7 @@ class BasicTest extends BaseCase
 
         $this->configBuilder->withEventsOnly(
             [
-                [
-                    'value' => ConstEventType::QUERY_EVENT->value
-                ]
+                ['value' => ConstEventType::QUERY_EVENT->value]
             ]
         );
 
@@ -186,13 +179,8 @@ class BasicTest extends BaseCase
         $this->configBuilder
             ->withEventsOnly(
                 [
-                    [
-                        'value' => ConstEventType::WRITE_ROWS_EVENT_V1->value
-                    ],
-                    [
-                         'value' => ConstEventType::WRITE_ROWS_EVENT_V2->value
-
-                    ]
+                    ['value' => ConstEventType::WRITE_ROWS_EVENT_V1->value],
+                    ['value' => ConstEventType::WRITE_ROWS_EVENT_V2->value]
                 ]
             )->withTablesOnly([$expectedTable]);
 
@@ -224,9 +212,7 @@ class BasicTest extends BaseCase
 
         $this->configBuilder->withEventsOnly(
             [
-                [
-                    'value' => ConstEventType::QUERY_EVENT->value
-                ]
+                ['value' => ConstEventType::QUERY_EVENT->value]
             ]
         );
 
