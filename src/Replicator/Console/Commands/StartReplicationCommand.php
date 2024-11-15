@@ -7,7 +7,7 @@ use MySQLReplication\Config\ConfigBuilder;
 use MySQLReplication\Definitions\ConstEventType;
 use MySQLReplication\MySQLReplicationFactory;
 use robertogriel\Replicator\Config\ReplicationConfigManager;
-use robertogriel\Replicator\Binlog\BinlogManager;
+use robertogriel\Replicator\Database\DatabaseService;
 use robertogriel\Replicator\Subscribers\Registration;
 
 class StartReplicationCommand extends Command
@@ -37,7 +37,8 @@ class StartReplicationCommand extends Command
             ->withDatabasesOnly($databases)
             ->withTablesOnly($tables);
 
-        $lastBinlogPosition = BinlogManager::getLastBinlogPosition();
+        $databaseService = new DatabaseService();
+        $lastBinlogPosition = $databaseService->getLastBinlogPosition();
 
         if (!empty($lastBinlogPosition['file']) && !empty($lastBinlogPosition['position'])) {
             $builder

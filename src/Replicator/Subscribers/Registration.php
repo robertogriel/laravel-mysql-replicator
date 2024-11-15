@@ -7,12 +7,12 @@ use MySQLReplication\Event\EventSubscribers;
 use MySQLReplication\Event\DTO\DeleteRowsDTO;
 use MySQLReplication\Event\DTO\UpdateRowsDTO;
 use MySQLReplication\Event\DTO\WriteRowsDTO;
+use robertogriel\Replicator\Database\DatabaseService;
 use robertogriel\Replicator\Handlers\UpdateHandler;
 use robertogriel\Replicator\Handlers\InsertHandler;
 use robertogriel\Replicator\Handlers\DeleteHandler;
 use robertogriel\Replicator\Helpers\ChangedColumns;
 use robertogriel\Replicator\Interceptor\InterceptorManager;
-use robertogriel\Replicator\Binlog\BinlogManager;
 
 class Registration extends EventSubscribers
 {
@@ -127,7 +127,8 @@ class Registration extends EventSubscribers
                 }
 
                 $binLogInfo = $event->getEventInfo()->binLogCurrent;
-                BinlogManager::updateBinlogPosition($binLogInfo->getBinFileName(), $binLogInfo->getBinLogPosition());
+                $databaseService = new DatabaseService();
+                $databaseService->updateBinlogPosition($binLogInfo->getBinFileName(), $binLogInfo->getBinLogPosition());
             }
         }
     }
