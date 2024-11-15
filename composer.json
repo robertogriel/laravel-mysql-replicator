@@ -35,15 +35,14 @@
     "autoload": {
         "psr-4": {
             "robertogriel\\Replicator\\": "src/Replicator/",
-            "MySQLReplication\\": "src/MySQLReplication/",
-            "MySQLReplication\\Tests\\": "src/Tests/"
+            "MySQLReplication\\": "src/MySQLReplication/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-          "MySQLReplication\\Tests\\": "tests/"
+          "Tests\\MySQLReplication\\": "Tests/MySQLReplication"
         }
-    },
+      },
     "config": {
         "sort-packages": true,
         "allow-plugins": {

@@ -3,6 +3,8 @@ FROM php:8.3.13
 ENV TZ=America/Sao_Paulo \
     DEBIAN_FRONTEND=noninteractive
 
+RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory-limit.ini
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       tzdata  \
@@ -40,9 +42,9 @@ COPY composer.json composer.lock ./
 RUN composer install && composer dump-autoload
 
 COPY . .
-COPY my.cnf-tests /etc/mysql/conf.d/custom.cnf
+COPY Tests/MySQLReplication/my.cnf-tests /etc/mysql/conf.d/custom.cnf
 
-COPY init-db.sh /usr/local/bin/init-db.sh
+COPY Tests/MySQLReplication/init-db.sh /usr/local/bin/init-db.sh
 RUN chmod +x /usr/local/bin/init-db.sh
 
 ENTRYPOINT ["/usr/local/bin/init-db.sh"]

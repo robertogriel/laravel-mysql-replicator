@@ -2,16 +2,15 @@
 
 declare(strict_types=1);
 
-namespace MySQLReplication\Tests\Integration;
+namespace Tests\MySQLReplication\Integration;
 
 use MySQLReplication\Event\DTO\EventDTO;
 use MySQLReplication\Event\EventSubscribers;
 
 class TestEventSubscribers extends EventSubscribers
 {
-    public function __construct(
-        private readonly BaseCase $baseTest
-    ) {
+    public function __construct(private readonly BaseCase $baseTest)
+    {
     }
 
     public function allEvents(EventDTO $event): void
