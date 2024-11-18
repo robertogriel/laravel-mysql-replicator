@@ -26,8 +26,8 @@ class StartReplicationCommand extends Command
         $builder = (new ConfigBuilder())
             ->withHost(env('DB_HOST'))
             ->withPort(env('DB_PORT'))
-            ->withUser(env('REPLICADOR_DB_USERNAME'))
-            ->withPassword(env('REPLICADOR_DB_PASSWORD'))
+            ->withUser(env('REPLICATOR_DB_USERNAME'))
+            ->withPassword(env('REPLICATOR_DB_PASSWORD'))
             ->withEventsOnly([
                 ConstEventType::UPDATE_ROWS_EVENT_V1,
                 ConstEventType::WRITE_ROWS_EVENT_V1,
