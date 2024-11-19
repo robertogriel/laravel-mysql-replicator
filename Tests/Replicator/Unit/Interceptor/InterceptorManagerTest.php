@@ -3,22 +3,52 @@
 use Illuminate\Support\Facades\App;
 use robertogriel\Replicator\Interceptor\InterceptorManager;
 
-test('should call the interceptor function correctly and returns modified data', function () {
-    $data = ['notes' => 'Rise from within', 'motivational_notes' => 'If you really want it the world is yours'];
-    $nodePrimaryTable = 'primary_table';
-    $nodePrimaryDatabase = 'primary_database';
-    $interceptorFunction = ['TestInterceptorClass', 'demotivateMethod'];
+test('should call interceptor and modify data correctly', function () {
+    $interceptorFunction = ['TestInterceptorClass', 'transform'];
+    $data = ['name' => 'John Doe', 'email' => 'john.doe@example.com'];
+    $nodePrimaryTable = 'usuarios';
+    $nodePrimaryDatabase = 'legacy_database';
 
     App::shouldReceive('call')
         ->once()
         ->with($interceptorFunction, [
             'data' => $data,
             'nodePrimaryTable' => $nodePrimaryTable,
-            'nodePrimaryDatabase' => $nodePrimaryDatabase
+            'nodePrimaryDatabase' => $nodePrimaryDatabase,
         ])
-        ->andReturn(['notes' => 'Stay down within', 'demotivational_notes' => 'Even if you want it, the world won’t care']);
+        ->andReturn(['name' => 'John Smith', 'email' => 'john.smith@example.com']);
 
-    $result = InterceptorManager::applyInterceptor($interceptorFunction, $data, $nodePrimaryTable, $nodePrimaryDatabase);
+    $result = InterceptorManager::applyInterceptor(
+        $interceptorFunction,
+        $data,
+        $nodePrimaryTable,
+        $nodePrimaryDatabase
+    );
 
-    expect($result)->toEqual(['notes' => 'Stay down within', 'demotivational_notes' => 'Even if you want it, the world won’t care']);
+    expect($result)->toEqual(['name' => 'John Smith', 'email' => 'john.smith@example.com']);
+});
+
+test('should return original data when interceptor does not modify it', function () {
+    $interceptorFunction = ['TestInterceptorClass', 'noop'];
+    $data = ['name' => 'Jane Doe', 'email' => 'jane.doe@example.com'];
+    $nodePrimaryTable = 'users';
+    $nodePrimaryDatabase = 'users_api_database';
+
+    App::shouldReceive('call')
+        ->once()
+        ->with($interceptorFunction, [
+            'data' => $data,
+            'nodePrimaryTable' => $nodePrimaryTable,
+            'nodePrimaryDatabase' => $nodePrimaryDatabase,
+        ])
+        ->andReturn($data);
+
+    $result = InterceptorManager::applyInterceptor(
+        $interceptorFunction,
+        $data,
+        $nodePrimaryTable,
+        $nodePrimaryDatabase
+    );
+
+    expect($result)->toEqual($data);
 });

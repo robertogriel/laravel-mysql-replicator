@@ -4,26 +4,25 @@ use Illuminate\Support\Facades\Config;
 use robertogriel\Replicator\Config\ReplicationConfigManager;
 
 beforeEach(function () {
-
     Config::shouldReceive('get')
         ->once()
         ->with('replicator')
         ->andReturn([
-            'replication_1' => [
+            'usuarios_to_users' => [
                 'node_primary' => [
-                    'database' => 'has_anyone_in_production',
-                    'table' => 'primary_table',
-                    'reference_key' => 'id',
+                    'database' => 'legacy_database',
+                    'table' => 'usuarios',
+                    'reference_key' => 'id_usuario',
                 ],
                 'node_secondary' => [
-                    'database' => 'has_anyone_in_remote',
-                    'table' => 'secondary_table',
-                    'reference_key' => 'id',
+                    'database' => 'users_api_database',
+                    'table' => 'users',
+                    'reference_key' => 'user_id',
                 ],
                 'columns' => [
-                    'column1' => 'mapped_column1',
+                    'id_usuario' => 'user_id',
                 ],
-                'interceptor' => [SomeInterceptorClass::class, 'iReallyDontKnowWhatHappenHere'],
+                'interceptor' => [InterceptorClasseExample::class, 'translateUserId'],
             ],
         ]);
 });
@@ -31,43 +30,50 @@ beforeEach(function () {
 test('should load configurations correctly', function () {
     $manager = new ReplicationConfigManager();
 
-    expect($manager->getConfigurations())
-        ->toBeArray()
-        ->toHaveKey('replication_1');
+    expect($manager->getConfigurations())->toBeArray()->toHaveKey('usuarios_to_users');
 });
 
-test('should retrieves unique databases', function () {
+test('should retrieve unique databases correctly', function () {
     $manager = new ReplicationConfigManager();
 
     expect($manager->getDatabases())
         ->toBeArray()
-        ->toEqualCanonicalizing(['has_anyone_in_production', 'has_anyone_in_remote']);
+        ->toEqualCanonicalizing(['legacy_database', 'users_api_database']);
 });
 
-test('should retrieves unique tables', function () {
+test('should retrieve unique tables correctly', function () {
     $manager = new ReplicationConfigManager();
 
     expect($manager->getTables())
         ->toBeArray()
-        ->toEqualCanonicalizing(['primary_table', 'secondary_table']);
+        ->toEqualCanonicalizing(['usuarios', 'users']);
 });
 
 test('should support interceptor functionality', function () {
+    $interceptor = new InterceptorClasseExample();
+    $data = ['id_usuario' => 1932, 'origin' => 'LEGACY'];
+    $modifiedData = $interceptor->translateUserId($data);
 
-    $interceptor = new SomeInterceptorClass();
-    $data = ['column1' => 'value1'];
-    $modifiedData = $interceptor->iReallyDontKnowWhatHappenHere($data);
-
-    expect($modifiedData)
-        ->toBeArray()
-        ->toHaveKey('column1', 'Is this the real life? Is this just fantasy?');
+    expect($modifiedData)->toBeArray()->toHaveKey('user_id', 1927);
 });
 
-class SomeInterceptorClass
+test('should interceptor not change value', function () {
+    $interceptor = new InterceptorClasseExample();
+    $data = ['user_id' => 1927, 'origin' => 'USER-API'];
+    $modifiedData = $interceptor->translateUserId($data);
+
+    expect($modifiedData)->toBeArray()->toHaveKey('user_id', 1927);
+});
+
+class InterceptorClasseExample
 {
-    public function iReallyDontKnowWhatHappenHere(array $data): array
+    public function translateUserId(array $data): array
     {
-        $data['column1'] = 'Is this the real life? Is this just fantasy?';
+        if ($data['origin'] === 'LEGACY') {
+            $data['user_id'] = 1927;
+        } else {
+            $data['id_usuario'] = 1932;
+        }
         return $data;
     }
 }

@@ -5,11 +5,11 @@ use robertogriel\Replicator\Database\DatabaseService;
 
 beforeEach(function () {
     Mockery::close();
-    putenv('REPLICATOR_DB=replicator');
+    putenv('REPLICATOR_DB=replicator_test_db');
 });
 
-test('should method calls DB::update with correct query and binds', function () {
-    $database = 'another_database';
+test('should call DB::update with correct query and binds', function () {
+    $database = 'users_api_db';
     $table = 'users';
     $clausule = 'name = :name';
     $referenceKey = 'user_id';
@@ -17,10 +17,7 @@ test('should method calls DB::update with correct query and binds', function () 
 
     $expectedSql = "UPDATE {$database}.{$table} SET {$clausule} WHERE {$database}.{$table}.{$referenceKey} = :{$referenceKey} /* isReplicating */;";
 
-    DB::shouldReceive('update')
-        ->once()
-        ->with($expectedSql, $binds)
-        ->andReturn(true);
+    DB::shouldReceive('update')->once()->with($expectedSql, $binds)->andReturnTrue();
 
     $databaseService = new DatabaseService();
     $databaseService->update($database, $table, $clausule, $referenceKey, $binds);
@@ -28,19 +25,16 @@ test('should method calls DB::update with correct query and binds', function () 
     expect(true)->toBeTrue();
 });
 
-test('insert method calls DB::insert with correct query and binds', function () {
-    $database = 'secondary_db';
+test('should call DB::insert with correct query and binds', function () {
+    $database = 'users_api_database';
     $table = 'users';
     $columns = 'name,email';
     $placeholders = ':name,:email';
-    $binds = [':name' => 'Capi Bara', ':email' => 'capibara@bababoe.com'];
+    $binds = [':name' => 'Rick Sanches', ':email' => 'little_rick@galaticfederation.gov'];
 
     $expectedSql = "INSERT INTO {$database}.{$table} ({$columns}) VALUES ({$placeholders}) /* isReplicating */;";
 
-    DB::shouldReceive('insert')
-        ->once()
-        ->with($expectedSql, $binds)
-        ->andReturn(true);
+    DB::shouldReceive('insert')->once()->with($expectedSql, $binds)->andReturnTrue();
 
     $databaseService = new DatabaseService();
     $databaseService->insert($database, $table, $columns, $placeholders, $binds);
@@ -48,18 +42,15 @@ test('insert method calls DB::insert with correct query and binds', function () 
     expect(true)->toBeTrue();
 });
 
-test('delete method calls DB::delete with correct query and binds', function () {
-    $database = 'secondary_db';
+test('should call DB::delete with correct query and binds', function () {
+    $database = 'users_api_database';
     $table = 'users';
     $referenceKey = 'user_id';
     $binds = [':user_id' => 1932];
 
     $expectedSql = "DELETE FROM {$database}.{$table} WHERE {$database}.{$table}.{$referenceKey} = :{$referenceKey} /* isReplicating */;";
 
-    DB::shouldReceive('delete')
-        ->once()
-        ->with($expectedSql, $binds)
-        ->andReturn(true);
+    DB::shouldReceive('delete')->once()->with($expectedSql, $binds)->andReturnTrue();
 
     $databaseService = new DatabaseService();
     $databaseService->delete($database, $table, $referenceKey, $binds);
@@ -67,42 +58,46 @@ test('delete method calls DB::delete with correct query and binds', function () 
     expect(true)->toBeTrue();
 });
 
-test('getLastBinlogPosition returns correct binlog position', function () {
-    $expectedResult = ['file' => 'mariadb-bin.000070', 'position' => 344];
+// TODO: esse teste vai precisar ser ajustado quando o pdointercept for instalado
+test('should return correct binlog position from DB::selectOne', function () {
+    $expectedBinlogPosition = ['file' => 'binlog.000001', 'position' => 123456];
     DB::shouldReceive('selectOne')
         ->once()
-        ->with("SELECT json_binlog FROM replicator.settings")
-        ->andReturn((object) ['json_binlog' => json_encode($expectedResult)]);
+        ->with('SELECT json_binlog FROM replicator_test_db.settings')
+        ->andReturn((object) ['json_binlog' => json_encode($expectedBinlogPosition)]);
 
     $databaseService = new DatabaseService();
-    $result = $databaseService->getLastBinlogPosition();
+    $binlogPosition = $databaseService->getLastBinlogPosition();
 
-    expect($result)->toEqual($expectedResult);
+    expect($binlogPosition)->toEqual($expectedBinlogPosition);
 });
 
-test('getLastBinlogPosition returns null when no binlog position found', function () {
+test('should return null when no binlog position is found in DB::selectOne', function () {
     DB::shouldReceive('selectOne')
         ->once()
-        ->with("SELECT json_binlog FROM replicator.settings")
-        ->andReturn(null);
+        ->with('SELECT json_binlog FROM replicator_test_db.settings')
+        ->andReturnNull();
 
     $databaseService = new DatabaseService();
-    $result = $databaseService->getLastBinlogPosition();
+    $binlogPosition = $databaseService->getLastBinlogPosition();
 
-    expect($result)->toBeNull();
+    expect($binlogPosition)->toBeNull();
 });
 
-test('updateBinlogPosition updates binlog position correctly', function () {
+// TODO: esse teste vai precisar ser ajustado quando o pdointercept for instalado
+test('should call DB::update to update binlog position', function () {
     $fileName = 'binlog.000002';
-    $position = 67890;
+    $position = 789012;
+
+    $expectedJsonBinlog = json_encode(['file' => $fileName, 'position' => $position]);
+    $expectedSql = 'UPDATE replicator_test_db.settings SET json_binlog = :json_binlog WHERE true;';
 
     DB::shouldReceive('update')
         ->once()
-        ->with(
-            "UPDATE replicator.settings SET json_binlog = :json_binlog WHERE true;",
-            ['json_binlog' => json_encode(['file' => $fileName, 'position' => $position])]
-        )
-        ->andReturn(true);
+        ->with($expectedSql, [
+            'json_binlog' => $expectedJsonBinlog,
+        ])
+        ->andReturnTrue();
 
     $databaseService = new DatabaseService();
     $databaseService->updateBinlogPosition($fileName, $position);

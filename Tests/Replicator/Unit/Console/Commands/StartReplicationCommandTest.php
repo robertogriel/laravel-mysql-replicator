@@ -7,8 +7,7 @@ use MySQLReplication\Config\ConfigBuilder;
 use MySQLReplication\MySQLReplicationFactory;
 use MySQLReplication\Event\EventSubscribers;
 
-test('should executes handle method and configures replication correctly', function () {
-
+test('should configure replication and execute handle method correctly', function () {
     putenv('DB_HOST=127.0.0.1');
     putenv('DB_PORT=3306');
     putenv('REPLICATOR_DB_USERNAME=root');
@@ -19,19 +18,19 @@ test('should executes handle method and configures replication correctly', funct
         ->once()
         ->with('replicator')
         ->andReturn([
-            'replication_1' => [
+            'usuarios_to_users' => [
                 'node_primary' => [
-                    'database' => 'primary_db',
-                    'table' => 'primary_table',
-                    'reference_key' => 'id',
+                    'database' => 'legacy_database',
+                    'table' => 'usuarios',
+                    'reference_key' => 'id_usuario',
                 ],
                 'node_secondary' => [
-                    'database' => 'secondary_db',
-                    'table' => 'secondary_table',
-                    'reference_key' => 'id',
+                    'database' => 'users_api_database',
+                    'table' => 'users',
+                    'reference_key' => 'user_id',
                 ],
                 'columns' => [
-                    'column_with_name' => 'column_with_alias',
+                    'id_usuario' => 'user_id',
                 ],
             ],
         ]);
@@ -53,29 +52,38 @@ test('should executes handle method and configures replication correctly', funct
     });
 
     Mockery::mock('overload:' . ConfigBuilder::class)
-        ->shouldReceive('withHost')->andReturnSelf()
-        ->shouldReceive('withPort')->andReturnSelf()
-        ->shouldReceive('withUser')->andReturnSelf()
-        ->shouldReceive('withPassword')->andReturnSelf()
-        ->shouldReceive('withEventsOnly')->andReturnSelf()
-        ->shouldReceive('withDatabasesOnly')->andReturnSelf()
-        ->shouldReceive('withTablesOnly')->andReturnSelf()
-        ->shouldReceive('withBinLogFileName')->andReturnSelf()
-        ->shouldReceive('withBinLogPosition')->andReturnSelf()
-        ->shouldReceive('build')->andReturn('mocked_build')
-        ->getMock();
+        ->shouldReceive('withHost')
+        ->andReturnSelf()
+        ->shouldReceive('withPort')
+        ->andReturnSelf()
+        ->shouldReceive('withUser')
+        ->andReturnSelf()
+        ->shouldReceive('withPassword')
+        ->andReturnSelf()
+        ->shouldReceive('withEventsOnly')
+        ->andReturnSelf()
+        ->shouldReceive('withDatabasesOnly')
+        ->andReturnSelf()
+        ->shouldReceive('withTablesOnly')
+        ->andReturnSelf()
+        ->shouldReceive('withBinLogFileName')
+        ->andReturnSelf()
+        ->shouldReceive('withBinLogPosition')
+        ->andReturnSelf()
+        ->shouldReceive('build')
+        ->andReturn('mocked_build');
 
     Mockery::mock('overload:' . MySQLReplicationFactory::class)
         ->shouldReceive('registerSubscriber')
+        ->once()
         ->andReturnNull()
         ->shouldReceive('run')
-        ->andReturnNull()
-        ->getMock();
+        ->once()
+        ->andReturnNull();
 
     Mockery::mock('overload:' . EventSubscribers::class)
         ->shouldReceive('allEvents')
-        ->andReturnNull()
-        ->getMock();
+        ->andReturnNull();
 
     $command = app(StartReplicationCommand::class);
     $command->handle();

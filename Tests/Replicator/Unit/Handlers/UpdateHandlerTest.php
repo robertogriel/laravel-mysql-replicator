@@ -3,33 +3,25 @@
 use Illuminate\Support\Facades\DB;
 use robertogriel\Replicator\Handlers\UpdateHandler;
 
-beforeEach(function () {
-    Mockery::close();
-    putenv('REPLICATOR_DB=replicator');
-});
-
-test('should method successfully updates data with changes', function () {
-    $nodePrimaryReferenceKey = 'id';
-    $nodeSecondaryDatabase = 'secondary_db';
+test('should successfully update data when changes are detected', function () {
+    $nodePrimaryReferenceKey = 'id_usuario';
+    $nodeSecondaryDatabase = 'users_api_database';
     $nodeSecondaryTable = 'users';
     $nodeSecondaryReferenceKey = 'user_id';
-    $columnMappings = ['name' => 'user_name', 'email' => 'user_email'];
+    $columnMappings = ['nome' => 'name', 'email' => 'email_address'];
     $row = [
-        'before' => ['id' => 1932, 'name' => 'Les Ismore', 'email' => 'les@ismore.com'],
-        'after' => ['id' => 1932, 'name' => 'Al Coholic', 'email' => 'horse_with_no_name@yahoo.com'],
+        'before' => ['id_usuario' => 1932, 'nome' => 'John Doe', 'email' => 'john.doe@example.com'],
+        'after' => ['id_usuario' => 1932, 'nome' => 'John Smith', 'email' => 'john.smith@example.com'],
     ];
 
-    $expectedSql = "UPDATE secondary_db.users SET secondary_db.users.user_name = :user_name, secondary_db.users.user_email = :user_email WHERE secondary_db.users.user_id = :user_id /* isReplicating */;";
+    $expectedSql = "UPDATE {$nodeSecondaryDatabase}.{$nodeSecondaryTable} SET {$nodeSecondaryDatabase}.{$nodeSecondaryTable}.name = :name, {$nodeSecondaryDatabase}.{$nodeSecondaryTable}.email_address = :email_address WHERE {$nodeSecondaryDatabase}.{$nodeSecondaryTable}.user_id = :user_id /* isReplicating */;";
     $expectedBinds = [
-        ':user_name' => 'Al Coholic',
-        ':user_email' => 'horse_with_no_name@yahoo.com',
+        ':name' => 'John Smith',
+        ':email_address' => 'john.smith@example.com',
         ':user_id' => 1932,
     ];
 
-    DB::shouldReceive('update')
-        ->once()
-        ->with($expectedSql, $expectedBinds)
-        ->andReturnTrue();
+    DB::shouldReceive('update')->once()->with($expectedSql, $expectedBinds)->andReturnTrue();
 
     UpdateHandler::handle(
         $nodePrimaryReferenceKey,
@@ -43,15 +35,15 @@ test('should method successfully updates data with changes', function () {
     expect(true)->toBeTrue();
 });
 
-test('should method does not update data when there are no changes', function () {
-    $nodePrimaryReferenceKey = 'id';
-    $nodeSecondaryDatabase = 'secondary_db';
+test('should not perform update when no changes are detected', function () {
+    $nodePrimaryReferenceKey = 'id_usuario';
+    $nodeSecondaryDatabase = 'users_api_database';
     $nodeSecondaryTable = 'users';
     $nodeSecondaryReferenceKey = 'user_id';
-    $columnMappings = ['name' => 'user_name', 'email' => 'user_email'];
+    $columnMappings = ['nome' => 'name', 'email' => 'email_address'];
     $row = [
-        'before' => ['id' => 1932, 'name' => 'Al Coholic', 'email' => 'horse_with_no_name@yahoo.com'],
-        'after' => ['id' => 1932, 'name' => 'Al Coholic', 'email' => 'horse_with_no_name@yahoo.com'],
+        'before' => ['id_usuario' => 1932, 'nome' => 'John Doe', 'email' => 'john.doe@example.com'],
+        'after' => ['id_usuario' => 1932, 'nome' => 'John Doe', 'email' => 'john.doe@example.com'],
     ];
 
     DB::shouldReceive('update')->never();
@@ -66,9 +58,4 @@ test('should method does not update data when there are no changes', function ()
     );
 
     expect(true)->toBeTrue();
-});
-
-afterEach(function () {
-    Mockery::close();
-    putenv('REPLICATOR_DB');
 });

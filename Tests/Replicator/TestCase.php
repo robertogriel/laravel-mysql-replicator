@@ -9,6 +9,7 @@ use robertogriel\Replicator\ReplicatorServiceProvider;
 
 abstract class TestCase extends BaseTestCase
 {
+    // @codeCoverageIgnoreStart
     protected function setUp(): void
     {
         parent::setUp();
@@ -20,9 +21,7 @@ abstract class TestCase extends BaseTestCase
 
     protected function getPackageProviders($app): array
     {
-        return [
-            ReplicatorServiceProvider::class,
-        ];
+        return [ReplicatorServiceProvider::class];
     }
+    // @codeCoverageIgnoreEnd
 }
-

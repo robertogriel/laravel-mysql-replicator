@@ -11,167 +11,137 @@ use MySQLReplication\Repository\FieldDTO;
 use MySQLReplication\Event\RowEvent\ColumnDTOCollection;
 use robertogriel\Replicator\Helpers\ChangedColumns;
 
-test('should get changed rows on update correctly', function () {
+test('should return changed columns on update', function () {
     $binLogCurrent = new BinLogCurrent();
-    $eventInfo = new EventInfo(
-        1699862400,
-        1,
-        1,
-        100,
-        '12345',
-        0,
-        true,
-        $binLogCurrent
+    $eventInfo = new EventInfo(1699862400, 1, 1, 100, '12345', 0, true, $binLogCurrent);
+
+    $columns = ['nome', 'email'];
+    $columnDTOCollection = new ColumnDTOCollection(
+        array_map(
+            fn($col) => new ColumnDTO(
+                new FieldDTO($col, 'legacy_database', 'usuarios', 'VARCHAR', true, false),
+                1,
+                255,
+                10,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ),
+            $columns
+        )
     );
 
-    $columns = ['name', 'surname'];
-    $columnDTOCollection = new ColumnDTOCollection(array_map(function($col) {
-        $fieldDTO = new FieldDTO($col, 'test_database', 'test_table', 'VARCHAR', true, false);
-        return new ColumnDTO(
-            $fieldDTO,
-            1,
-            255,
-            10,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
-    }, $columns));
+    $tableMap = new TableMap('1', 'legacy_database', 'usuarios', count($columns), $columnDTOCollection);
 
-    $tableMap = new TableMap(
-        1,
-        'test_database',
-        'test_table',
-        count($columns),
-        $columnDTOCollection
-    );
-
-    $event = new UpdateRowsDTO(
-        $eventInfo,
-        $tableMap,
-        1,
+    $event = new UpdateRowsDTO($eventInfo, $tableMap, 1, [
         [
-            [
-                'before' => ['name' => 'ddThor', 'surname' => 'Odinson'],
-                'after' => ['name' => 'ddThor', 'surname' => 'new_Odinson'],
-            ],
+            'before' => ['nome' => 'John Doe', 'email' => 'john.doe@example.com'],
+            'after' => ['nome' => 'John Smith', 'email' => 'john.doe@example.com'],
         ],
-    );
+    ]);
 
     $changedColumns = ChangedColumns::getChangedColumns($event);
 
-    expect($changedColumns)
-        ->toBeArray()
-        ->toEqual(['surname']);
+    expect($changedColumns)->toEqual(['nome']);
 });
 
-test('should get changed rows on write correctly', function () {
+test('should return all columns on write', function () {
     $binLogCurrent = new BinLogCurrent();
-    $eventInfo = new EventInfo(
-        1699862400,
-        1,
-        1,
-        100,
-        '12345',
-        0,
-        true,
-        $binLogCurrent
+    $eventInfo = new EventInfo(1699862400, 1, 1, 100, '12345', 0, true, $binLogCurrent);
+
+    $columns = ['name', 'email'];
+    $columnDTOCollection = new ColumnDTOCollection(
+        array_map(
+            fn($col) => new ColumnDTO(
+                new FieldDTO($col, 'users_api_db', 'users', 'VARCHAR', true, false),
+                1,
+                255,
+                10,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ),
+            $columns
+        )
     );
 
-    $columns = ['name', 'surname'];
-    $columnDTOCollection = new ColumnDTOCollection(array_map(function($col) {
-        $fieldDTO = new FieldDTO($col, 'test_database', 'test_table', 'VARCHAR', true, false);
-        return new ColumnDTO(
-            $fieldDTO,
-            1,
-            255,
-            10,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
-    }, $columns));
+    $tableMap = new TableMap('1', 'users_api_db', 'users', count($columns), $columnDTOCollection);
 
-    $tableMap = new TableMap(
-        1,
-        'test_database',
-        'test_table',
-        count($columns),
-        $columnDTOCollection
-    );
-
-    $event = new WriteRowsDTO(
-        $eventInfo,
-        $tableMap,
-        1,
-        [
-            ['name' => 'ddThor', 'surname' => 'Odinson'],
-        ]
-    );
+    $event = new WriteRowsDTO($eventInfo, $tableMap, 1, [['name' => 'John Doe', 'email' => 'john.doe@example.com']]);
 
     $changedColumns = ChangedColumns::getChangedColumns($event);
 
-    expect($changedColumns)
-        ->toBeArray()
-        ->toEqual(['name', 'surname']);
+    expect($changedColumns)->toEqual(['name', 'email']);
 });
 
-test('should get changed rows on delete correctly', function () {
+test('should return columns on delete with before values', function () {
     $binLogCurrent = new BinLogCurrent();
-    $eventInfo = new EventInfo(
-        1699862400,
-        1,
-        1,
-        100,
-        '12345',
-        0,
-        true,
-        $binLogCurrent
+    $eventInfo = new EventInfo(1699862400, 1, 1, 100, '12345', 0, true, $binLogCurrent);
+
+    $columns = ['nome', 'email'];
+    $columnDTOCollection = new ColumnDTOCollection(
+        array_map(
+            fn($col) => new ColumnDTO(
+                new FieldDTO($col, 'legacy_database', 'usuarios', 'VARCHAR', true, false),
+                1,
+                255,
+                10,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ),
+            $columns
+        )
     );
 
-    $columns = ['name', 'surname'];
-    $columnDTOCollection = new ColumnDTOCollection(array_map(function($col) {
-        $fieldDTO = new FieldDTO($col, 'test_database', 'test_table', 'VARCHAR', true, false);
-        return new ColumnDTO(
-            $fieldDTO,
-            1,
-            255,
-            10,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
-    }, $columns));
+    $tableMap = new TableMap('1', 'legacy_database', 'usuarios', count($columns), $columnDTOCollection);
 
-    $tableMap = new TableMap(
-        1,
-        'test_database',
-        'test_table',
-        count($columns),
-        $columnDTOCollection
-    );
-
-    $event = new DeleteRowsDTO(
-        $eventInfo,
-        $tableMap,
-        1,
-        [
-            'before' => ['name' => 'ddThor', 'surname' => 'Odinson'],
-        ]
-    );
+    $event = new DeleteRowsDTO($eventInfo, $tableMap, 1, [
+        'before' => ['nome' => 'John Doe', 'email' => 'john.doe@example.com'],
+    ]);
 
     $changedColumns = ChangedColumns::getChangedColumns($event);
 
-    expect($changedColumns)
-        ->toBeArray()
-        ->toEqual(['name', 'surname']);
+    expect($changedColumns)->toEqual(['nome', 'email']);
+});
+
+test('should return empty array when no changes on delete without values', function () {
+    $binLogCurrent = new BinLogCurrent();
+    $eventInfo = new EventInfo(1699862400, 1, 1, 100, '12345', 0, true, $binLogCurrent);
+
+    $columns = ['name', 'email'];
+    $columnDTOCollection = new ColumnDTOCollection(
+        array_map(
+            fn($col) => new ColumnDTO(
+                new FieldDTO($col, 'users_api_db', 'usuarios', 'VARCHAR', true, false),
+                1,
+                255,
+                10,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ),
+            $columns
+        )
+    );
+
+    $tableMap = new TableMap('1', 'users_api_db', 'usuarios', count($columns), $columnDTOCollection);
+
+    $event = new DeleteRowsDTO($eventInfo, $tableMap, 1, []);
+
+    $changedColumns = ChangedColumns::getChangedColumns($event);
+
+    expect($changedColumns)->toEqual([]);
 });

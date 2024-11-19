@@ -3,56 +3,40 @@
 use Illuminate\Support\Facades\DB;
 use robertogriel\Replicator\Handlers\InsertHandler;
 
-beforeEach(function () {
-    Mockery::close();
-    putenv('REPLICATOR_DB=replicator');
-});
-
-test('should method successfully inserts data', function () {
-    $nodeSecondaryDatabase = 'secondary_db';
+test('should successfully insert data with column mappings using InsertHandler', function () {
+    $nodeSecondaryDatabase = 'users_api_database';
     $nodeSecondaryTable = 'users';
-    $columnMappings = ['id' => 'user_id', 'name' => 'user_name'];
-    $data = ['id' => 1932, 'name' => 'Les Ismore'];
+    $columnMappings = ['id_usuario' => 'user_id', 'nome' => 'name'];
+    $data = ['id_usuario' => 1932, 'nome' => 'Steve Musk'];
 
-    $expectedSql = 'INSERT INTO secondary_db.users (user_id,user_name) VALUES (:user_id,:user_name) /* isReplicating */;';
+    $expectedSql = "INSERT INTO {$nodeSecondaryDatabase}.{$nodeSecondaryTable} (user_id,name) VALUES (:user_id,:name) /* isReplicating */;";
     $expectedBinds = [
         ':user_id' => 1932,
-        ':user_name' => 'Les Ismore',
+        ':name' => 'Steve Musk',
     ];
 
-    DB::shouldReceive('insert')
-        ->once()
-        ->with($expectedSql, $expectedBinds)
-        ->andReturnTrue();
+    DB::shouldReceive('insert')->once()->with($expectedSql, $expectedBinds)->andReturnTrue();
 
     InsertHandler::handle($nodeSecondaryDatabase, $nodeSecondaryTable, $columnMappings, $data);
 
     expect(true)->toBeTrue();
 });
 
-test('should method successfully inserts data without column mappings', function () {
-    $nodeSecondaryDatabase = 'secondary_db';
+test('should successfully insert data without column mappings using InsertHandler', function () {
+    $nodeSecondaryDatabase = 'users_api_database';
     $nodeSecondaryTable = 'users';
     $columnMappings = [];
-    $data = ['id' => 1932, 'name' => 'Les Ismore'];
+    $data = ['id_usuario' => 1932, 'nome' => 'Elon Jobs'];
 
-    $expectedSql = 'INSERT INTO secondary_db.users (id,name) VALUES (:id,:name) /* isReplicating */;';
+    $expectedSql = "INSERT INTO {$nodeSecondaryDatabase}.{$nodeSecondaryTable} (id_usuario,nome) VALUES (:id_usuario,:nome) /* isReplicating */;";
     $expectedBinds = [
-        ':id' => 1932,
-        ':name' => 'Les Ismore',
+        ':id_usuario' => 1932,
+        ':nome' => 'Elon Jobs',
     ];
 
-    DB::shouldReceive('insert')
-        ->once()
-        ->with($expectedSql, $expectedBinds)
-        ->andReturnTrue();
+    DB::shouldReceive('insert')->once()->with($expectedSql, $expectedBinds)->andReturnTrue();
 
     InsertHandler::handle($nodeSecondaryDatabase, $nodeSecondaryTable, $columnMappings, $data);
 
     expect(true)->toBeTrue();
-});
-
-afterEach(function () {
-    Mockery::close();
-    putenv('REPLICATOR_DB');
 });
