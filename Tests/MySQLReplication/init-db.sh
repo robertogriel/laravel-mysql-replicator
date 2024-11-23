@@ -13,4 +13,8 @@ mysql -e "GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'COLABORADOR_CEN
 mysql -e "FLUSH PRIVILEGES;"
 mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root -D mysql
 
-exec "$@"
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+else
+    tail -f /dev/null
+fi

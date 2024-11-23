@@ -3,6 +3,7 @@
     "description": "",
     "homepage": "https://github.com/robertogriel/replicator",
     "license": "MIT",
+    "type": "library",
     "authors": [
         {
             "name": "Roberto Griel Filho",

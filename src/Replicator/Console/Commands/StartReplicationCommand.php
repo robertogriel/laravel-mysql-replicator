@@ -2,18 +2,19 @@
 
 namespace robertogriel\Replicator\Console\Commands;
 
+use Illuminate\Support\Facades\Config;
 use Illuminate\Console\Command;
-use MySQLReplication\Config\ConfigBuilder;
-use MySQLReplication\Definitions\ConstEventType;
-use MySQLReplication\MySQLReplicationFactory;
 use robertogriel\Replicator\Config\ReplicationConfigManager;
 use robertogriel\Replicator\Database\DatabaseService;
 use robertogriel\Replicator\Subscribers\Registration;
+use MySQLReplication\Config\ConfigBuilder;
+use MySQLReplication\Definitions\ConstEventType;
+use MySQLReplication\MySQLReplicationFactory;
 
 class StartReplicationCommand extends Command
 {
     protected $signature = 'replicator:start';
-    protected $description = 'Inicia o processo de replicação configurado no pacote Replicator';
+    protected $description = 'Starts the replication process configured in the Replicator package';
 
     public function handle(): void
     {
@@ -24,10 +25,10 @@ class StartReplicationCommand extends Command
         $tables = $configManager->getTables();
 
         $builder = (new ConfigBuilder())
-            ->withHost(env('DB_HOST'))
-            ->withPort(env('DB_PORT'))
-            ->withUser(env('REPLICATOR_DB_USERNAME'))
-            ->withPassword(env('REPLICATOR_DB_PASSWORD'))
+            ->withHost(Config::get('database.connections.replicator.host'))
+            ->withPort(Config::get('database.connections.replicator.port'))
+            ->withUser(Config::get('database.connections.replicator.username'))
+            ->withPassword(Config::get('database.connections.replicator.password'))
             ->withEventsOnly([
                 ConstEventType::UPDATE_ROWS_EVENT_V1,
                 ConstEventType::WRITE_ROWS_EVENT_V1,

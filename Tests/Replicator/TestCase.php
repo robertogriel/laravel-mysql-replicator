@@ -4,12 +4,11 @@ namespace Tests\Replicator;
 
 use Illuminate\Container\Container;
 use Illuminate\Support\Facades\Facade;
-use Orchestra\Testbench\TestCase as BaseTestCase;
 use robertogriel\Replicator\ReplicatorServiceProvider;
+use Orchestra\Testbench\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
-    // @codeCoverageIgnoreStart
     protected function setUp(): void
     {
         parent::setUp();
@@ -23,5 +22,4 @@ abstract class TestCase extends BaseTestCase
     {
         return [ReplicatorServiceProvider::class];
     }
-    // @codeCoverageIgnoreEnd
 }

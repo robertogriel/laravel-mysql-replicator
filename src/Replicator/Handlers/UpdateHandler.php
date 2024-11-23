@@ -35,8 +35,8 @@ class UpdateHandler
 
             $clausule = implode(
                 ', ',
-                array_map(function ($column) use ($nodeSecondaryDatabase, $nodeSecondaryTable) {
-                    return "{$nodeSecondaryDatabase}.{$nodeSecondaryTable}.{$column} = :{$column}";
+                array_map(function ($column) {
+                    return "{$column} = :{$column}";
                 }, array_keys($changedColumns))
             );
 
@@ -48,7 +48,6 @@ class UpdateHandler
                 $nodeSecondaryReferenceKey,
                 $binds
             );
-
         }
     }
 }

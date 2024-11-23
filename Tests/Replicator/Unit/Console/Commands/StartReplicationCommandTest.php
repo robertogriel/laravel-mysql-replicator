@@ -4,8 +4,8 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use robertogriel\Replicator\Console\Commands\StartReplicationCommand;
 use MySQLReplication\Config\ConfigBuilder;
-use MySQLReplication\MySQLReplicationFactory;
 use MySQLReplication\Event\EventSubscribers;
+use MySQLReplication\MySQLReplicationFactory;
 
 test('should configure replication and execute handle method correctly', function () {
     putenv('DB_HOST=127.0.0.1');

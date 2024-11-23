@@ -2,17 +2,17 @@
 
 namespace robertogriel\Replicator\Subscribers;
 
-use MySQLReplication\Event\DTO\EventDTO;
-use MySQLReplication\Event\EventSubscribers;
+use Illuminate\Support\Facades\App;
+use robertogriel\Replicator\Database\DatabaseService;
+use robertogriel\Replicator\Handlers\DeleteHandler;
+use robertogriel\Replicator\Handlers\InsertHandler;
+use robertogriel\Replicator\Handlers\UpdateHandler;
+use robertogriel\Replicator\Helpers\ChangedColumns;
 use MySQLReplication\Event\DTO\DeleteRowsDTO;
+use MySQLReplication\Event\DTO\EventDTO;
 use MySQLReplication\Event\DTO\UpdateRowsDTO;
 use MySQLReplication\Event\DTO\WriteRowsDTO;
-use robertogriel\Replicator\Database\DatabaseService;
-use robertogriel\Replicator\Handlers\UpdateHandler;
-use robertogriel\Replicator\Handlers\InsertHandler;
-use robertogriel\Replicator\Handlers\DeleteHandler;
-use robertogriel\Replicator\Helpers\ChangedColumns;
-use robertogriel\Replicator\Interceptor\InterceptorManager;
+use MySQLReplication\Event\EventSubscribers;
 
 class Registration extends EventSubscribers
 {
@@ -55,11 +55,7 @@ class Registration extends EventSubscribers
                     $columnMappings = array_flip($config['columns']);
                 }
 
-                $configuredColumns = array_keys($columnMappings);
-
-                $changedColumns = ChangedColumns::getChangedColumns($event);
-
-                if (empty(array_intersect($configuredColumns, $changedColumns))) {
+                if (!ChangedColumns::checkChangedColumns($event, array_keys($columnMappings))) {
                     continue;
                 }
 
@@ -74,12 +70,11 @@ class Registration extends EventSubscribers
                     switch ($event::class) {
                         case UpdateRowsDTO::class:
                             if ($interceptorFunction) {
-                                $row['after'] = InterceptorManager::applyInterceptor(
-                                    $interceptorFunction,
-                                    $row['after'],
-                                    $nodePrimaryTable,
-                                    $nodePrimaryDatabase
-                                );
+                                $row['after'] = App::call($interceptorFunction, [
+                                    'data' => $row['after'],
+                                    'nodePrimaryTable' => $nodePrimaryTable,
+                                    'nodePrimaryDatabase' => $nodePrimaryDatabase,
+                                ]);
                             }
 
                             UpdateHandler::handle(
@@ -94,12 +89,11 @@ class Registration extends EventSubscribers
 
                         case WriteRowsDTO::class:
                             if ($interceptorFunction) {
-                                $row = InterceptorManager::applyInterceptor(
-                                    $interceptorFunction,
-                                    $row,
-                                    $nodePrimaryTable,
-                                    $nodePrimaryDatabase
-                                );
+                                $row = App::call($interceptorFunction, [
+                                    'data' => $row,
+                                    'nodePrimaryTable' => $nodePrimaryTable,
+                                    'nodePrimaryDatabase' => $nodePrimaryDatabase,
+                                ]);
                             }
 
                             InsertHandler::handle($nodeSecondaryDatabase, $nodeSecondaryTable, $columnMappings, $row);
@@ -107,12 +101,11 @@ class Registration extends EventSubscribers
 
                         case DeleteRowsDTO::class:
                             if ($interceptorFunction) {
-                                $row = InterceptorManager::applyInterceptor(
-                                    $interceptorFunction,
-                                    $row,
-                                    $nodePrimaryTable,
-                                    $nodePrimaryDatabase
-                                );
+                                $row = App::call($interceptorFunction, [
+                                    'data' => $row,
+                                    'nodePrimaryTable' => $nodePrimaryTable,
+                                    'nodePrimaryDatabase' => $nodePrimaryDatabase,
+                                ]);
                             }
 
                             DeleteHandler::handle(

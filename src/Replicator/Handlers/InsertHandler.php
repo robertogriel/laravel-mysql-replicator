@@ -30,6 +30,5 @@ class InsertHandler
 
         $databaseHandler = new DatabaseService();
         $databaseHandler->insert($nodeSecondaryDatabase, $nodeSecondaryTable, $columns, $placeholders, $binds);
-
     }
 }

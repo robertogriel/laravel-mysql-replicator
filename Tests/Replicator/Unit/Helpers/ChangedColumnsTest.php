@@ -1,15 +1,15 @@
 <?php
 
+use robertogriel\Replicator\Helpers\ChangedColumns;
+use MySQLReplication\BinLog\BinLogCurrent;
 use MySQLReplication\Event\DTO\DeleteRowsDTO;
 use MySQLReplication\Event\DTO\UpdateRowsDTO;
 use MySQLReplication\Event\DTO\WriteRowsDTO;
 use MySQLReplication\Event\EventInfo;
-use MySQLReplication\BinLog\BinLogCurrent;
-use MySQLReplication\Event\RowEvent\TableMap;
 use MySQLReplication\Event\RowEvent\ColumnDTO;
-use MySQLReplication\Repository\FieldDTO;
 use MySQLReplication\Event\RowEvent\ColumnDTOCollection;
-use robertogriel\Replicator\Helpers\ChangedColumns;
+use MySQLReplication\Event\RowEvent\TableMap;
+use MySQLReplication\Repository\FieldDTO;
 
 test('should return changed columns on update', function () {
     $binLogCurrent = new BinLogCurrent();
@@ -43,7 +43,7 @@ test('should return changed columns on update', function () {
         ],
     ]);
 
-    $changedColumns = ChangedColumns::getChangedColumns($event);
+    $changedColumns = ChangedColumns::checkChangedColumns($event);
 
     expect($changedColumns)->toEqual(['nome']);
 });
@@ -75,7 +75,7 @@ test('should return all columns on write', function () {
 
     $event = new WriteRowsDTO($eventInfo, $tableMap, 1, [['name' => 'John Doe', 'email' => 'john.doe@example.com']]);
 
-    $changedColumns = ChangedColumns::getChangedColumns($event);
+    $changedColumns = ChangedColumns::checkChangedColumns($event);
 
     expect($changedColumns)->toEqual(['name', 'email']);
 });
@@ -109,7 +109,7 @@ test('should return columns on delete with before values', function () {
         'before' => ['nome' => 'John Doe', 'email' => 'john.doe@example.com'],
     ]);
 
-    $changedColumns = ChangedColumns::getChangedColumns($event);
+    $changedColumns = ChangedColumns::checkChangedColumns($event);
 
     expect($changedColumns)->toEqual(['nome', 'email']);
 });
@@ -141,7 +141,7 @@ test('should return empty array when no changes on delete without values', funct
 
     $event = new DeleteRowsDTO($eventInfo, $tableMap, 1, []);
 
-    $changedColumns = ChangedColumns::getChangedColumns($event);
+    $changedColumns = ChangedColumns::checkChangedColumns($event);
 
     expect($changedColumns)->toEqual([]);
 });

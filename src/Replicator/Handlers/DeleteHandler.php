@@ -19,6 +19,5 @@ class DeleteHandler
 
         $databaseHandler = new DatabaseService();
         $databaseHandler->delete($nodeSecondaryDatabase, $nodeSecondaryTable, $nodeSecondaryReferenceKey, $binds);
-
     }
 }
