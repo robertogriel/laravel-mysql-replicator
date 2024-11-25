@@ -2,8 +2,8 @@
 
 namespace robertogriel\Replicator\Console\Commands;
 
-use Illuminate\Support\Facades\Config;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Config;
 use robertogriel\Replicator\Config\ReplicationConfigManager;
 use robertogriel\Replicator\Database\DatabaseService;
 use robertogriel\Replicator\Subscribers\Registration;
@@ -19,16 +19,13 @@ class StartReplicationCommand extends Command
     public function handle(): void
     {
         $configManager = new ReplicationConfigManager();
-        $configurations = $configManager->getConfigurations();
-
-        $databases = $configManager->getDatabases();
-        $tables = $configManager->getTables();
+        [$databases, $tables] = $configManager->getGroupDatabaseConfigurations();
 
         $builder = (new ConfigBuilder())
-            ->withHost(Config::get('database.connections.replicator.host'))
-            ->withPort(Config::get('database.connections.replicator.port'))
-            ->withUser(Config::get('database.connections.replicator.username'))
-            ->withPassword(Config::get('database.connections.replicator.password'))
+            ->withHost(Config::get('database.connections.replicator-bridge.host'))
+            ->withPort(Config::get('database.connections.replicator-bridge.port'))
+            ->withUser(Config::get('database.connections.replicator-bridge.username'))
+            ->withPassword(Config::get('database.connections.replicator-bridge.password'))
             ->withEventsOnly([
                 ConstEventType::UPDATE_ROWS_EVENT_V1,
                 ConstEventType::WRITE_ROWS_EVENT_V1,
@@ -47,7 +44,7 @@ class StartReplicationCommand extends Command
                 ->withBinLogPosition($lastBinlogPosition['position']);
         }
 
-        $registrationSubscriber = new Registration($configurations);
+        $registrationSubscriber = new Registration();
         $replication = new MySQLReplicationFactory($builder->build());
         $replication->registerSubscriber($registrationSubscriber);
 
