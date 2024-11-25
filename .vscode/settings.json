@@ -1,0 +1,7 @@
+{
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "text": "Use the conventional commit message format, but respond using the gerund. Capitalize the first word."
+        }
+    ]
+}

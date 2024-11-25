@@ -1,0 +1,17 @@
+  replicator-tests:
+    build:
+      context: ./apps/replicador_temp
+      dockerfile: Dockerfile
+    volumes:
+      - './apps/replicador_temp:/app'
+    environment:
+      XDEBUG_MODE: coverage
+      XDEBUG_CONFIG: >
+        start_with_request=yes
+        client_host=host.docker.internal
+        client_port=9003
+    command: >
+      bash -c "
+        vendor/bin/pest Tests/Unit --testdox --colors --coverage &&
+        vendor/bin/pest Tests/Integration --testdox --colors --coverage
+      "

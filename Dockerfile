@@ -1,21 +1,42 @@
-FROM php:8.3.12-apache
+FROM php:8.3.13
 
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    libzip-dev \
-    unzip \
-    && docker-php-ext-install zip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+ENV TZ=America/Sao_Paulo \
+    DEBIAN_FRONTEND=noninteractive
+ENV PHP_IDE_CONFIG="serverName=local"
 
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-RUN php composer-setup.php
-RUN php -r "unlink('composer-setup.php');"
-RUN mv composer.phar /usr/local/bin/composer
+# One of tests need to allocate 128M of memory
+RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory-limit.ini
 
-COPY . /var/www/html/
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends \
+      tzdata  \
+      libzip-dev \
+      libxml2-dev \
+      libcurl4-openssl-dev \
+      libonig-dev \
+      libssl-dev \
+      pkg-config \
+      unzip \
+      curl \
+      default-mysql-server \
+      netcat-traditional
 
-RUN composer install --optimize-autoloader
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-EXPOSE 80
+RUN docker-php-ext-install mysqli
+RUN docker-php-ext-install pdo_mysql
+RUN docker-php-ext-install mbstring
+RUN docker-php-ext-install xml
+RUN docker-php-ext-install zip
+RUN docker-php-ext-install bcmath
+RUN docker-php-ext-install curl
+RUN docker-php-ext-install sockets
+
+RUN pecl install xdebug && \
+    docker-php-ext-enable xdebug
+
+RUN usermod -d /var/lib/mysql mysql
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /laravel-replicador
